@@ -295,36 +295,51 @@ export class AuthPloc extends Ploc<StoreApi<AuthState>> {
 }
 ```
 
-**`DependencyLocator.ts`** — wire once, import everywhere:
+**`DependencyLocator.ts`** — `use*Ploc()` hooks that lazily create and cache each singleton:
 
 ```ts
+"use client"
+import { useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { MemberRepository } from "@/data/mock/MemberRepository"
 import { GetMembersUseCase } from "@/domain/member/GetMembersUseCase"
 import { MembersPloc } from "@/application/member/MembersPloc"
 import useMembersState from "@/application/member/useMembersState"
 
-const memberRepo = new MemberRepository()
+let membersPlocSingleton: MembersPloc | null = null
 
-export const membersPloc = new MembersPloc({
-  store: useMembersState,   // Zustand's create() return is also a StoreApi
-  getMembersUseCase: new GetMembersUseCase(memberRepo),
-})
+export function useMembersPloc(): MembersPloc {
+  const router = useRouter()
+  // When the repo needs an HTTP client that can redirect on 401:
+  // const http = useMemo(() => ensureHttpClient(router), [router])
+
+  return useMemo(() => {
+    if (membersPlocSingleton) return membersPlocSingleton
+    const repo = new MemberRepository()
+    membersPlocSingleton = new MembersPloc({
+      store: useMembersState,
+      getMembersUseCase: new GetMembersUseCase(repo),
+    })
+    return membersPlocSingleton
+  }, [router])
+}
 ```
 
-**In components** — state from hook, actions from Ploc singleton:
+**In components** — call `use*Ploc()` for the instance, `use*State()` for reactive state:
 
 ```tsx
 "use client"
 import { useEffect } from "react"
 import useMembersState from "@/application/member/useMembersState"
-import { membersPloc } from "@/core/di/DependencyLocator"
+import { useMembersPloc } from "@/core/di/DependencyLocator"
 
 export function PeoplePage() {
+  const ploc = useMembersPloc()
   const { members, loading, error } = useMembersState()
 
   useEffect(() => {
-    membersPloc.fetchMembers(defaultFilters)
-  }, [])
+    ploc.fetchMembers(defaultFilters)
+  }, [ploc])
 
   // render members — nothing else
 }
@@ -335,7 +350,7 @@ export function PeoplePage() {
 - `*Ploc.ts` extends `Ploc<StoreApi<State>>` from `@/core/application/ploc`. Receives use-cases in constructor — never instantiates them.
 - All state mutations via `this.store.setState(...)` inside the Ploc.
 - Side-effects (`toast`, `router.push`) triggered inside the Ploc, not in components.
-- The Ploc singleton comes from `DependencyLocator` — never `new XxxPloc()` inside a component.
+- The `use*Ploc()` hook lives in `DependencyLocator.ts` — never `new XxxPloc()` in a component.
 
 ---
 
@@ -536,16 +551,27 @@ export class DepartmentsPloc extends Ploc<StoreApi<DepartmentsState>> {
 ### 6. Wire in DependencyLocator
 
 ```ts
-// core/di/DependencyLocator.ts (add to existing exports)
+// core/di/DependencyLocator.ts  (add alongside existing entries)
+import { useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { DepartmentRepository } from "@/data/mock/DepartmentRepository"
 import { GetDepartmentsUseCase } from "@/domain/department/GetDepartmentsUseCase"
 import { DepartmentsPloc } from "@/application/department/DepartmentsPloc"
 import useDepartmentsState from "@/application/department/useDepartmentsState"
 
-export const departmentsPloc = new DepartmentsPloc({
-  store: useDepartmentsState,
-  getDepartmentsUseCase: new GetDepartmentsUseCase(new DepartmentRepository()),
-})
+let departmentsPlocSingleton: DepartmentsPloc | null = null
+
+export function useDepartmentsPloc(): DepartmentsPloc {
+  const router = useRouter()
+  return useMemo(() => {
+    if (departmentsPlocSingleton) return departmentsPlocSingleton
+    departmentsPlocSingleton = new DepartmentsPloc({
+      store: useDepartmentsState,
+      getDepartmentsUseCase: new GetDepartmentsUseCase(new DepartmentRepository()),
+    })
+    return departmentsPlocSingleton
+  }, [router])
+}
 ```
 
 ### 7. Presentation — component
@@ -555,11 +581,12 @@ export const departmentsPloc = new DepartmentsPloc({
 "use client"
 import { useEffect } from "react"
 import useDepartmentsState from "@/application/department/useDepartmentsState"
-import { departmentsPloc } from "@/core/di/DependencyLocator"
+import { useDepartmentsPloc } from "@/core/di/DependencyLocator"
 
 export function DepartmentsTable() {
+  const ploc = useDepartmentsPloc()
   const { departments, loading } = useDepartmentsState()
-  useEffect(() => { departmentsPloc.fetchDepartments() }, [])
+  useEffect(() => { ploc.fetchDepartments() }, [ploc])
   // render departments
 }
 ```
@@ -582,7 +609,7 @@ A correct change:
 - Keeps `.tsx` components **thin** — no filtering, counting, or date logic
 - Business logic lives in a **UseCase**, not in a Ploc method
 - State mutations only via `this.store.setState(...)` inside the Ploc
-- The Ploc is imported from `DependencyLocator` — never `new XxxPloc()` in a component
+- The Ploc comes from `use*Ploc()` (DependencyLocator) — never `new XxxPloc()` in a component
 - Errors travel through `Either<DataError, T>`, handled in the Ploc with `fold`
 
 **Boundary violations:**
