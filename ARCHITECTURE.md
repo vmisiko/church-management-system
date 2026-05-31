@@ -24,9 +24,9 @@ app/ (pages)  →  Presentation, Application
 ```
 
 - `domain/` must not import from any other layer, React, or Next.js.
-- `data/` may only import from `domain/`.
-- `application/` may import from `domain/` and `data/`.
-- `presentation/` may only import from `application/` (controller hooks) and `components/ui/`.
+- `data/` may only import from `domain/` and `core/`.
+- `application/` may import from `domain/`, `data/`, and `core/`.
+- `presentation/` components import only from `application/` and `components/ui/`.
 - `app/` pages wire everything together — they are the composition root.
 
 ---
@@ -36,20 +36,19 @@ app/ (pages)  →  Presentation, Application
 | Vue / PloC concept | Next.js equivalent in this repo |
 |---|---|
 | Vue SFC (view) | React component (`.tsx`) |
-| `*Ploc.ts` class | `use*Controller.ts` custom hook |
-| Pinia store (`useXxxState`) | Zustand store (`use*Store.ts`) |
-| `store.$patch(...)` | `useXxxStore.setState(...)` |
-| `DependencyLocator` | Direct imports in controller hooks (no container needed) |
-| `CustomAxios` | `apiFetch` wrapper in `core/` (future) |
-| `Either<DataError, T>` | Same — `core/Either.ts` |
-| `DataError` | Same — `core/DataError.ts` |
+| `*Ploc.ts` class | `*Ploc.ts` class — **same pattern, same name** |
+| Pinia store (`useXxxState`) | Zustand store (`use*State.ts`) |
+| `store.$patch(...)` | `this.store.setState(...)` (inside the Ploc) |
+| `DependencyLocator` | `core/di/DependencyLocator.ts` — same role |
+| `Either<DataError, T>` | Same — `@/core/domain/Either` |
+| `DataError` | Same — `@/core/domain/DataError` |
 | `fold(leftFn, rightFn)` | Same |
 | `*UseCase.ts` | Same — `domain/*/usecases/` |
 | `I*Repository.ts` | Same — TypeScript interface in `domain/*/` |
 | `*Repository.ts` | Same — concrete class in `data/` |
 | Vue Router (`useRouter`) | `useRouter` from `next/navigation` |
 | `useToast()` | `toast` from `sonner` (already installed) |
-| `onMounted` data fetch | `useEffect` in controller hook, or Server Component direct call |
+| `onMounted` data fetch | Called on the Ploc instance from a `useEffect` or Server Component |
 
 ---
 
@@ -72,22 +71,21 @@ Next-church-Management-System/
 │       ├── stock/page.tsx
 │       └── damage-reports/page.tsx
 │
-├── core/                         # Cross-cutting plumbing (already exists)
+├── core/                         # Cross-cutting plumbing
+│   ├── application/
+│   │   └── ploc.ts               # Abstract Ploc<S> base class
 │   ├── domain/
-│   │   ├── Either.ts             # Either<L, R> + fold()  →  import from '@/core/domain/Either'
-│   │   ├── DataError.ts          # Typed error union      →  import from '@/core/domain/DataError'
+│   │   ├── Either.ts             # Either<L, R> + fold()
+│   │   ├── DataError.ts          # Typed error union
 │   │   └── usecases/
 │   │       └── BaseUseCase.ts
-│   ├── di/
-│   │   └── DependencyLocator.ts  # Ploc/controller factory hooks
-│   └── utility/
-│       ├── CustomAxios.ts        # HTTP client (future use)
-│       └── makeServerAxios.ts
+│   └── di/
+│       └── DependencyLocator.ts  # Ploc singletons wired with their dependencies
 │
 ├── domain/                       # Framework-agnostic — entities, contracts, use-cases
 │   ├── member/
-│   │   ├── Member.ts                     # Entity interface
-│   │   ├── IMemberRepository.ts          # Port / contract
+│   │   ├── Member.ts
+│   │   ├── IMemberRepository.ts
 │   │   ├── GetMembersUseCase.ts
 │   │   └── FilterMembersUseCase.ts
 │   ├── fellowship/
@@ -96,36 +94,35 @@ Next-church-Management-System/
 │   │   ├── GetFellowshipsUseCase.ts
 │   │   └── GetFellowshipBySlugUseCase.ts
 │   ├── people-filters/
-│   │   ├── PeopleFilter.ts               # PeopleFilterState type + option constants
-│   │   └── FilterRules.ts                # countActiveFilters, hasActiveFilters
+│   │   ├── PeopleFilter.ts
+│   │   └── FilterRules.ts
 │   └── shared/
-│       └── FellowshipRules.ts            # fellowshipSlug, meetingTimeToFormValue, etc.
+│       └── FellowshipRules.ts
 │
-├── data/                         # Repository implementations (data sources)
+├── data/                         # Repository implementations
 │   ├── mock/
-│   │   ├── MemberRepository.ts           # implements IMemberRepository
-│   │   └── FellowshipRepository.ts       # implements IFellowshipRepository
-│   └── api/                              # (future — swap mock for real HTTP here)
+│   │   ├── MemberRepository.ts
+│   │   └── FellowshipRepository.ts
+│   └── api/                      # (future — swap mock for real HTTP here)
 │       ├── MemberRepository.ts
 │       └── FellowshipRepository.ts
 │
-├── application/                  # Zustand stores + controller hooks
+├── application/                  # Zustand state stores + Ploc classes
+│   ├── auth/
+│   │   ├── useAuthState.ts       # Zustand store (state shape + optional persistence)
+│   │   └── AuthPloc.ts           # Ploc class — orchestrates auth use-cases
 │   ├── member/
-│   │   ├── useMembersStore.ts            # Zustand store (state shape)
-│   │   ├── useMembersController.ts       # orchestration: use-cases, fold, toast
-│   │   ├── useMemberFormStore.ts
-│   │   └── useMemberFormController.ts    # add/edit member form state
+│   │   ├── useMembersState.ts
+│   │   └── MembersPloc.ts
 │   └── fellowship/
-│       ├── useFellowshipsStore.ts
-│       ├── useFellowshipsController.ts   # list + zone/status filter
-│       ├── useFellowshipDetailStore.ts
-│       └── useFellowshipDetailController.ts  # single fellowship + member search
+│       ├── useFellowshipsState.ts
+│       └── FellowshipsPloc.ts
 │
 ├── presentation/                 # React components — render only, no business logic
 │   ├── components/
-│   │   ├── dashboard/            # KPI cards, charts, widgets
-│   │   ├── people/               # PeopleTable, PeopleFilters, AddMemberDialog
-│   │   ├── fellowships/          # FellowshipCard, FellowshipDetailsContent, etc.
+│   │   ├── dashboard/
+│   │   ├── people/
+│   │   ├── fellowships/
 │   │   ├── inventory/
 │   │   └── shared/               # AppShell, ThemeProvider
 │   └── ui/                       # shadcn/ui primitives — never edit manually
@@ -141,10 +138,10 @@ Next-church-Management-System/
 
 Pure TypeScript. No React, no Next.js, no framework imports.
 
-**Entities** (`Member.ts`, `Fellowship.ts`): the shapes the business cares about.
+**Entities** (`Member.ts`, etc.): the shapes the business cares about.
 
 ```ts
-// src/domain/member/Member.ts
+// domain/member/Member.ts
 export interface Member {
   id: string
   name: string
@@ -160,10 +157,10 @@ export interface Member {
 }
 ```
 
-**Repository interfaces** (`I*Repository.ts`): contracts that the data layer must fulfil. Use-cases depend on these interfaces, not on concrete implementations.
+**Repository interfaces** (`I*Repository.ts`): contracts the data layer must fulfil. Use-cases depend on these, not on concrete implementations.
 
 ```ts
-// src/domain/member/IMemberRepository.ts
+// domain/member/IMemberRepository.ts
 import type { Member } from "./Member"
 import type { Either } from "@/core/domain/Either"
 import type { DataError } from "@/core/domain/DataError"
@@ -174,143 +171,174 @@ export interface IMemberRepository {
 }
 ```
 
-**Use-cases** (`*UseCase.ts`): a single focused operation. The constructor accepts a repository interface; `execute()` does the work.
+**Use-cases** (`*UseCase.ts`): one focused operation each.
 
 ```ts
-// src/domain/member/GetMembersUseCase.ts
+// domain/member/GetMembersUseCase.ts
 import type { IMemberRepository } from "./IMemberRepository"
 import type { PeopleFilterState } from "@/domain/people-filters/PeopleFilter"
 
 export class GetMembersUseCase {
   constructor(private readonly repo: IMemberRepository) {}
-
   execute(filters: PeopleFilterState) {
     return this.repo.getAll()
   }
 }
 ```
 
-**Rules:** no file in `domain/` imports from `data/`, `application/`, `presentation/`, React, or Next.js. If a linter complains, the rule is correct.
+**Rules:** no file in `domain/` imports from `data/`, `application/`, `presentation/`, React, or Next.js.
 
 ---
 
 ### `data/` — external interactions
 
-Concrete repository implementations. HTTP calls and mapping live here. Today this is mock data; when the NestJS backend is ready, swap the implementation without touching any other layer.
+Concrete repository implementations. Mock today; swap for `api/` implementations when the NestJS backend is ready — no other layer changes.
 
 ```ts
-// src/data/mock/MemberRepository.ts
+// data/mock/MemberRepository.ts
 import type { IMemberRepository } from "@/domain/member/IMemberRepository"
-import type { Member } from "@/domain/member/Member"
 import { Either } from "@/core/domain/Either"
-
-const mockMembers: Member[] = [ /* ... */ ]
 
 export class MemberRepository implements IMemberRepository {
   async getAll() {
     return Either.right(mockMembers)
   }
-
   async getByFellowship(fellowshipName: string) {
-    return Either.right(
-      mockMembers.filter((m) => m.fellowship === fellowshipName)
+    return Either.right(mockMembers.filter((m) => m.fellowship === fellowshipName))
+  }
+}
+```
+
+**Rules:** imports only from `domain/` and `core/`. `fromJson` mappers live here, not in `domain/`.
+
+---
+
+### `application/` — state stores + Ploc classes
+
+This is the heart of the pattern. Each feature has two files:
+
+- **`use*State.ts`** — Zustand store that defines the state shape. May use `persist` for localStorage. No logic here — just the state container.
+- **`*Ploc.ts`** — class extending `Ploc<StoreApi<State>>`. Receives use-cases in its constructor. Exposes named methods (`fetchMembers`, `login`, `logout`, etc.) that orchestrate use-cases, call `fold`, and update the store. This is the direct Next.js equivalent of a Flutter BLoC or Vue `*Ploc` class.
+
+#### Reference implementation: `application/auth/`
+
+**`useAuthState.ts`** — state only:
+
+```ts
+import { create } from "zustand"
+import { persist, createJSONStorage } from "zustand/middleware"
+
+export interface AuthState {
+  accessToken: string | null
+  refreshToken: string | null
+  loginLoading: boolean
+  loginError: string | null
+  // ... other loading/error flags
+}
+
+const useAuthState = create<AuthState>()(
+  persist(
+    (): AuthState => ({
+      accessToken: null,
+      refreshToken: null,
+      loginLoading: false,
+      loginError: null,
+    }),
+    {
+      name: "cms-auth",
+      partialize: (state) => ({ accessToken: state.accessToken, refreshToken: state.refreshToken }),
+      storage: createJSONStorage(() => localStorage),
+    },
+  ),
+)
+
+export default useAuthState
+```
+
+**`AuthPloc.ts`** — orchestration class:
+
+```ts
+import type { StoreApi } from "zustand"
+import { Ploc } from "@/core/application/ploc"
+import type { AuthState } from "./useAuthState"
+import type { LoginUseCase } from "@/domain/usecases/auth/LoginUseCase"
+
+export type AuthPlocStoreType = StoreApi<AuthState>
+
+export class AuthPloc extends Ploc<AuthPlocStoreType> {
+  constructor({
+    store,
+    loginUseCase,
+  }: {
+    store: AuthPlocStoreType
+    loginUseCase: LoginUseCase
+  }) {
+    super({ store })
+    this.loginUseCase = loginUseCase
+  }
+
+  private readonly loginUseCase: LoginUseCase
+
+  async login(params: LoginRequest) {
+    this.store.setState({ loginLoading: true, loginError: null })
+
+    const result = await this.loginUseCase.execute(params)
+
+    return result.fold(
+      (error) => {
+        this.store.setState({ loginLoading: false, loginError: this.handleError(error) })
+        return Either.left(this.handleError(error))
+      },
+      (tokens) => {
+        this.store.setState({ loginLoading: false, accessToken: tokens.access_token })
+        return Either.right(tokens)
+      },
     )
   }
 }
 ```
 
-**Rules:**
-- Imports only from `domain/` and `core/`.
-- When `api/` implementations arrive, they call `apiFetch` (not the component, not the hook).
-- Maps API response shapes → domain entity shapes here (`fromJson` helpers live here, not in domain).
-
----
-
-### `application/` — Zustand stores + controller hooks (the PloC equivalent)
-
-This layer has two parts that mirror the Pinia store + Ploc split from the Vue version:
-
-- **`use*Store.ts`** — Zustand store: defines the state shape and exposes `setState`. This is the reactive state container, equivalent to a Pinia store.
-- **`use*Controller.ts`** — controller hook: orchestrates use-cases, calls `fold`, triggers `toast`/router. Equivalent to a `*Ploc` class.
-
-Components read from the store and call handlers from the controller — they never touch use-cases or repositories directly.
-
-**Store** (`use*Store.ts`):
+**`core/di/DependencyLocator.ts`** — wire once, import everywhere:
 
 ```ts
-// src/application/member/useMembersStore.ts
-import { create } from "zustand"
-import type { Member } from "@/domain/member/Member"
-import type { PeopleFilterState } from "@/domain/people-filters/PeopleFilter"
-import { defaultPeopleFilters } from "@/domain/people-filters/PeopleFilter"
-
-interface MembersState {
-  members: Member[]
-  loading: boolean
-  error: string | null
-  filters: PeopleFilterState
-  currentPage: number
-}
-
-export const useMembersStore = create<MembersState>()(() => ({
-  members: [],
-  loading: false,
-  error: null,
-  filters: defaultPeopleFilters,
-  currentPage: 1,
-}))
-```
-
-**Controller hook** (`use*Controller.ts`):
-
-```ts
-// src/application/member/useMembersController.ts
-"use client"
-
-import { useCallback } from "react"
-import { toast } from "sonner"
 import { MemberRepository } from "@/data/mock/MemberRepository"
 import { GetMembersUseCase } from "@/domain/member/GetMembersUseCase"
-import { useMembersStore } from "./useMembersStore"
-import type { PeopleFilterState } from "@/domain/people-filters/PeopleFilter"
+import { MembersPloc } from "@/application/member/MembersPloc"
+import useMembersState from "@/application/member/useMembersState"
 
-const repo = new MemberRepository()
-const getMembersUseCase = new GetMembersUseCase(repo)
+const memberRepo = new MemberRepository()
 
-export function useMembersController() {
-  const state = useMembersStore()
+export const membersPloc = new MembersPloc({
+  store: useMembersState,   // Zustand's create() return is also a StoreApi — pass it directly
+  getMembersUseCase: new GetMembersUseCase(memberRepo),
+})
+```
 
-  const fetchMembers = useCallback(async (filters: PeopleFilterState) => {
-    useMembersStore.setState({ loading: true, error: null })
+**In components** — read state from the hook, trigger actions on the Ploc:
 
-    const result = await getMembersUseCase.execute(filters)
+```tsx
+// presentation/components/people/PeopleTable.tsx
+"use client"
+import useMembersState from "@/application/member/useMembersState"
+import { membersPloc } from "@/core/di/DependencyLocator"
 
-    result.fold(
-      (error) => {
-        useMembersStore.setState({ loading: false, error: error.message })
-        toast.error(error.message)
-      },
-      (members) => {
-        useMembersStore.setState({ loading: false, members })
-      }
-    )
+export function PeoplePage() {
+  const { members, loading, error } = useMembersState()
+
+  useEffect(() => {
+    membersPloc.fetchMembers(defaultFilters)
   }, [])
 
-  const setFilters = useCallback((filters: PeopleFilterState) => {
-    useMembersStore.setState({ filters, currentPage: 1 })
-    fetchMembers(filters)
-  }, [fetchMembers])
-
-  return { state, setFilters, fetchMembers }
+  // render members — nothing else
 }
 ```
 
 **Rules:**
-- `use*Store.ts` imports only from `domain/`. No use-cases, no repositories, no React hooks.
-- `use*Controller.ts` imports from `domain/`, `data/`, `core/`, and its own store. Never from `presentation/` or `app/`.
-- `useMembersStore.setState(...)` is called on the store singleton — valid outside React components, which makes async operations in the controller clean.
-- All filtering, searching, pagination, and derived state computed here — never in components.
-- Side-effects (`toast`, `router.push`) happen here, not in components.
+- `use*State.ts` imports only from `domain/` and `zustand`. No use-cases, no repositories.
+- `*Ploc.ts` extends `Ploc<StoreApi<State>>` from `@/core/application/ploc`. Receives use-cases via constructor — never instantiates them internally.
+- All state mutations go through `this.store.setState(...)` inside the Ploc.
+- Side-effects (`toast`, `router.push`) are triggered inside the Ploc, not in components.
+- The Ploc singleton is created once in `DependencyLocator.ts` — never with `new XxxPloc()` inside a component.
 
 ---
 
@@ -318,34 +346,30 @@ export function useMembersController() {
 
 Thin. Render and delegate.
 
-Components receive state and handlers from a controller hook. They do not:
-- import from `data/` or `domain/`
-- compute filtered lists or counts
-- fire `toast` directly (the controller does that)
+Components:
+- read reactive state via `use*State()` hooks
+- trigger actions by calling methods on the Ploc singleton
+- do not import from `data/` or `domain/` directly
+- do not call use-cases
+- do not compute filtered lists, counts, or formatted dates (use-case / Ploc responsibility)
 
 ```tsx
-// src/presentation/components/people/PeopleTable.tsx
 "use client"
-import { useMembersController } from "@/application/member/useMembersController"
+import useFellowshipsState from "@/application/fellowship/useFellowshipsState"
+import { fellowshipsPloc } from "@/core/di/DependencyLocator"
 
-export function PeoplePage() {
-  const { state, setFilters } = useMembersController()
-  // render state.members — nothing else
+export function FellowshipsList() {
+  const { fellowships, loading } = useFellowshipsState()
+
+  return loading ? <Spinner /> : fellowships.map((f) => <FellowshipCard key={f.id} fellowship={f} />)
 }
 ```
-
-**Rules:**
-- Components import from `application/` (controller hooks) and `components/ui/` only.
-- UI-only derived values (badge colors, initials, display formatting) are fine in components.
-- Anything involving records, counts, or dates must live in a use-case or controller hook.
 
 ---
 
 ### `app/` — Next.js pages (composition root)
 
-Pages are thin orchestrators. They resolve route params and pass data to presentation components.
-
-Server Components may call `data/` repositories directly for initial server-side data fetching. Client Components delegate to controller hooks.
+Pages are thin orchestrators: resolve route params and render presentation components. Server Components may reach directly into `data/` for the initial server-side data load.
 
 ```tsx
 // app/fellowships/[slug]/page.tsx  (Server Component)
@@ -359,60 +383,47 @@ const getBySlugUseCase = new GetFellowshipBySlugUseCase(repo)
 
 export default async function FellowshipDetailPage({ params }: { params: { slug: string } }) {
   const result = await getBySlugUseCase.execute(params.slug)
-
   return result.fold(
     () => notFound(),
-    (fellowship) => <FellowshipDetailsContent fellowship={fellowship} />
+    (fellowship) => <FellowshipDetailsContent fellowship={fellowship} />,
   )
 }
 ```
 
-**Rules:**
-- No business logic, no markup beyond layout wrappers.
-- Server Components can reach into `data/` for initial load; client interactions go through controller hooks.
-- Pages do not contain `useState`, filter logic, or data transformations.
+**Rules:** no `useState`, no filter logic, no data transformations in pages.
 
 ---
 
 ## `core/` — cross-cutting plumbing
 
-Both files already exist. Import them exactly as shown below.
+### `Ploc<S>` — `@/core/application/ploc`
+
+Abstract base class all Ploc classes extend. Holds the store reference and provides `handleError`.
+
+```ts
+import type { StoreApi } from "zustand"
+import type { DataError } from "@/core/domain/DataError"
+
+export abstract class Ploc<S extends StoreApi<object>> {
+  protected readonly store: S
+  constructor({ store }: { store: S }) { this.store = store }
+  protected handleError(error: DataError): string { return error.message }
+}
+```
 
 ### `Either<L, R>` — `@/core/domain/Either`
 
-The standard way to express the two outcomes of any operation. Eliminates ad-hoc `try/catch` across layers.
-
-Key methods:
-- `Either.right(value)` — success path
-- `Either.left(error)` — failure path
-- `.fold(leftFn, rightFn)` — handle both outcomes
-- `.map(fn)` — transform the right value
-- `.getOrElse(default)` — unwrap with a fallback
-
-```ts
-import { Either } from "@/core/domain/Either"
-import type { DataError } from "@/core/domain/DataError"
-
-// In a repository:
-async getAll(): Promise<Either<DataError, Member[]>> {
-  try {
-    return Either.right(mockMembers)
-  } catch (e) {
-    return Either.left({ kind: "NetworkError", message: "Failed to load members", timestamp: new Date(), source: "MemberRepository" })
-  }
-}
-
-// In a controller hook:
-const result = await getMembersUseCase.execute(filters)
-result.fold(
-  (error) => { useMembersStore.setState({ error: error.message, loading: false }); toast.error(error.message) },
-  (members) => { useMembersStore.setState({ members, loading: false }) }
-)
-```
+| Method | Purpose |
+|---|---|
+| `Either.right(value)` | Success path |
+| `Either.left(error)` | Failure path |
+| `.fold(leftFn, rightFn)` | Handle both outcomes |
+| `.map(fn)` | Transform right value |
+| `.getOrElse(default)` | Unwrap with fallback |
 
 ### `DataError` — `@/core/domain/DataError`
 
-A discriminated union of typed error shapes. Pick the narrowest kind that fits:
+Discriminated union — pick the narrowest kind:
 
 | Kind | Use when |
 |---|---|
@@ -422,76 +433,62 @@ A discriminated union of typed error shapes. Pick the narrowest kind that fits:
 | `AuthenticationError` | User is not logged in |
 | `AuthorizationError` | User lacks permission |
 
-```ts
-import type { DataError } from "@/core/domain/DataError"
-
-// Construct a typed error inline — no class instantiation needed:
-const err: DataError = {
-  kind: "NetworkError",
-  message: "Failed to load members",
-  timestamp: new Date(),
-  source: "MemberRepository",
-}
-return Either.left(err)
-```
-
 ---
 
 ## Request lifecycle (golden path)
 
-Using "view members with filters" as the example:
+"User logs in" end to end:
 
 ```
-app/people/page.tsx
-  └─ <PeoplePage /> (presentation, "use client")
-       ├─ useMembersStore()          ← reactive state (Zustand)
-       └─ useMembersController()     ← handlers (application)
-            ├─ FilterMembersUseCase.execute(filters) (domain)
-            │    └─ IMemberRepository.getAll() (domain interface)
-            │         └─ MemberRepository.getAll() (data/mock)
-            │              └─ mockMembers[] → Either.right(filtered)
+app/login/page.tsx
+  └─ <LoginForm /> (presentation, "use client")
+       ├─ useAuthState()            ← reactive state (Zustand)
+       └─ authPloc.login(creds)     ← action (application Ploc singleton)
+            └─ LoginUseCase.execute(creds) (domain)
+                 └─ IAuthRepository.login() (domain interface)
+                      └─ AuthRepository.login() (data/api)
+                           └─ POST /auth/login → TokenResponse
             └─ fold:
-                 error → useMembersStore.setState({ error }) + toast.error(...)
-                 success → useMembersStore.setState({ members })
+                 error → this.store.setState({ loginError }) + toast.error(...)
+                 success → this.store.setState({ accessToken, ... }) + router.push('/dashboard')
 ```
 
 ### Sequence
 
-1. `PeoplePage` renders and calls `useMembersController()`.
-2. Controller hook calls `fetchMembers(defaultFilters)` on mount.
-3. Sets `loading: true`, calls `getMembersUseCase.execute(filters)`.
-4. Use-case calls `repo.getAll()`.
-5. Repository returns `Either.right(members)`.
-6. Use-case returns `Either` to the controller.
-7. Controller `fold`s: calls `useMembersStore.setState({ members, loading: false })`.
-8. Zustand notifies all subscribed components. `PeoplePage` re-renders with the new member list.
-
-For filter changes: user interacts → component calls `setFilters(newFilters)` → controller re-runs `fetchMembers` → state updates → component re-renders.
+1. `LoginForm` renders, subscribes to `useAuthState()`.
+2. User submits → component calls `authPloc.login(creds)`.
+3. Ploc sets `loginLoading: true`, calls `loginUseCase.execute(creds)`.
+4. Use-case calls `repo.login(creds)`.
+5. Repository returns `Either.right(tokens)`.
+6. Ploc `fold`s: calls `this.store.setState({ accessToken, loginLoading: false })` and `router.push('/dashboard')`.
+7. Zustand notifies `LoginForm`. Component re-renders with updated state.
 
 ---
 
 ## Adding a feature (checklist)
 
-When you add a new CMS feature (e.g. Departments, Attendance records), touch **one vertical slice**:
+One vertical slice per feature:
 
-### 1. Domain — entity type
+### 1. Domain — entity
+
 ```ts
-// src/domain/<feature>/<Feature>.ts
+// domain/department/Department.ts
 export interface Department { id: string; name: string; leader: string; memberCount: number }
 ```
 
 ### 2. Domain — repository interface
+
 ```ts
-// src/domain/<feature>/I<Feature>Repository.ts
+// domain/department/IDepartmentRepository.ts
 export interface IDepartmentRepository {
   getAll(): Promise<Either<DataError, Department[]>>
-  getById(id: string): Promise<Either<DataError, Department>>
 }
 ```
 
 ### 3. Domain — use-case(s)
+
 ```ts
-// src/domain/<feature>/Get<Feature>sUseCase.ts
+// domain/department/GetDepartmentsUseCase.ts
 export class GetDepartmentsUseCase {
   constructor(private repo: IDepartmentRepository) {}
   execute() { return this.repo.getAll() }
@@ -499,73 +496,107 @@ export class GetDepartmentsUseCase {
 ```
 
 ### 4. Data — repository implementation
+
 ```ts
-// src/data/mock/<Feature>Repository.ts
+// data/mock/DepartmentRepository.ts
 export class DepartmentRepository implements IDepartmentRepository {
   async getAll() { return Either.right(mockDepartments) }
-  async getById(id: string) { /* ... */ }
 }
 ```
 
-### 5. Application — Zustand store + controller hook
+### 5. Application — state store + Ploc class
 
 ```ts
-// src/application/<feature>/use<Feature>Store.ts
+// application/department/useDepartmentsState.ts
 import { create } from "zustand"
 import type { Department } from "@/domain/department/Department"
 
-interface DepartmentsState {
+export interface DepartmentsState {
   departments: Department[]
   loading: boolean
   error: string | null
 }
 
-export const useDepartmentsStore = create<DepartmentsState>()(() => ({
+const useDepartmentsState = create<DepartmentsState>()(() => ({
   departments: [],
   loading: false,
   error: null,
 }))
+
+export default useDepartmentsState
 ```
 
 ```ts
-// src/application/<feature>/use<Feature>Controller.ts
-import { useCallback } from "react"
-import { toast } from "sonner"
+// application/department/DepartmentsPloc.ts
+import type { StoreApi } from "zustand"
+import { Ploc } from "@/core/application/ploc"
+import type { DepartmentsState } from "./useDepartmentsState"
+import type { GetDepartmentsUseCase } from "@/domain/department/GetDepartmentsUseCase"
+
+export class DepartmentsPloc extends Ploc<StoreApi<DepartmentsState>> {
+  constructor({
+    store,
+    getDepartmentsUseCase,
+  }: {
+    store: StoreApi<DepartmentsState>
+    getDepartmentsUseCase: GetDepartmentsUseCase
+  }) {
+    super({ store })
+    this.getDepartmentsUseCase = getDepartmentsUseCase
+  }
+
+  private readonly getDepartmentsUseCase: GetDepartmentsUseCase
+
+  async fetchDepartments() {
+    this.store.setState({ loading: true, error: null })
+    const result = await this.getDepartmentsUseCase.execute()
+    result.fold(
+      (err) => this.store.setState({ loading: false, error: this.handleError(err) }),
+      (departments) => this.store.setState({ loading: false, departments }),
+    )
+  }
+}
+```
+
+### 6. Wire in DependencyLocator
+
+```ts
+// core/di/DependencyLocator.ts
 import { DepartmentRepository } from "@/data/mock/DepartmentRepository"
 import { GetDepartmentsUseCase } from "@/domain/department/GetDepartmentsUseCase"
-import { useDepartmentsStore } from "./useDepartmentsStore"
+import { DepartmentsPloc } from "@/application/department/DepartmentsPloc"
+import useDepartmentsState from "@/application/department/useDepartmentsState"
 
-const repo = new DepartmentRepository()
-const getDepartmentsUseCase = new GetDepartmentsUseCase(repo)
+export const departmentsPloc = new DepartmentsPloc({
+  store: useDepartmentsState,
+  getDepartmentsUseCase: new GetDepartmentsUseCase(new DepartmentRepository()),
+})
+```
 
-export function useDepartmentsController() {
-  const state = useDepartmentsStore()
+### 7. Presentation — component
 
-  const fetchDepartments = useCallback(async () => {
-    useDepartmentsStore.setState({ loading: true, error: null })
-    const result = await getDepartmentsUseCase.execute()
-    result.fold(
-      (err) => { useDepartmentsStore.setState({ loading: false, error: err.message }); toast.error(err.message) },
-      (departments) => { useDepartmentsStore.setState({ loading: false, departments }) }
-    )
+```tsx
+// presentation/components/departments/DepartmentsTable.tsx
+"use client"
+import { useEffect } from "react"
+import useDepartmentsState from "@/application/department/useDepartmentsState"
+import { departmentsPloc } from "@/core/di/DependencyLocator"
+
+export function DepartmentsTable() {
+  const { departments, loading } = useDepartmentsState()
+
+  useEffect(() => {
+    departmentsPloc.fetchDepartments()
   }, [])
 
-  return { state, fetchDepartments }
+  // render departments
 }
 ```
 
-### 6. Presentation — component(s)
-```tsx
-// src/presentation/components/<feature>/<Feature>Table.tsx
-export function DepartmentsTable() {
-  const { state } = useDepartmentsController()
-  // render state.departments only
-}
-```
+### 8. App — page
 
-### 7. App — page
 ```tsx
-// app/<feature>/page.tsx
+// app/departments/page.tsx
 import { DepartmentsTable } from "@/presentation/components/departments/DepartmentsTable"
 export default function DepartmentsPage() {
   return <AppShell><DepartmentsTable /></AppShell>
@@ -578,34 +609,34 @@ export default function DepartmentsPage() {
 
 A correct change:
 - Keeps `.tsx` components **thin** — no filtering, counting, or date logic
-- Introduces or modifies a **UseCase** instead of embedding logic in a hook or component
-- Touches **one vertical slice** — entity → interface → use-case → repository → controller → component
-- Returns errors through `Either<DataError, T>` and handles them in the controller with `fold`
+- Business logic lives in a **UseCase**, not in a Ploc method or component
+- State mutations happen exclusively via `this.store.setState(...)` inside the Ploc
+- The Ploc is imported from `DependencyLocator` — never instantiated inside a component
+- Errors travel through `Either<DataError, T>` and are handled in the Ploc with `fold`
 
-**Boundary violations (you're probably breaking the rules if…):**
+**Boundary violations:**
 
 | Smell | Rule broken |
 |---|---|
 | A `.tsx` component imports from `data/mock/` | Presentation must not reach into data |
-| A domain file imports `react`, `next/navigation`, or `sonner` | Domain must be framework-agnostic |
-| A component calls `mockMembers.filter(...)` directly | Filter logic belongs in a use-case |
-| Two controller hooks duplicate the same filter function | Extract to a use-case in `domain/` |
-| A page (`app/*.tsx`) contains `useState`/Zustand and business logic | Pages are orchestrators only |
-| Business logic or use-case calls are added directly to a Zustand store | Stores hold state only — orchestration belongs in the controller hook |
-| `Either` is bypassed with a bare `try/catch` in a repository | Data layer must use `Either` consistently |
+| A domain file imports `react`, `next/navigation`, or `zustand` | Domain must be framework-agnostic |
+| A component calls `new XxxPloc(...)` | Ploc is a singleton from DependencyLocator |
+| A component calls `useXxxState.setState(...)` directly | State mutations belong in the Ploc |
+| A component calls a use-case directly | Use-cases are the Ploc's job |
+| Two Ploc classes duplicate the same filter function | Extract to a use-case in `domain/` |
+| Business logic lives in a Zustand store | Stores hold state only |
+| `Either` is bypassed with bare `try/catch` in a repository | Data layer must use `Either` consistently |
 
 ---
 
 ## Migration path (current state → target)
 
-The current `lib/` files mix all four layers. Priority order for migrating:
-
 | Current file | Target location | What to split out |
 |---|---|---|
-| `lib/members.ts` | types → `domain/member/Member.ts`; data → `data/mock/MemberRepository.ts` | Separate entity from data source |
-| `lib/fellowships.ts` | types → `domain/fellowship/Fellowship.ts`; rules → `domain/shared/FellowshipRules.ts`; data → `data/mock/FellowshipRepository.ts` | Three concerns in one file |
-| `lib/people-filters.ts` | types/options → `domain/people-filters/PeopleFilter.ts`; rules → `domain/people-filters/FilterRules.ts` | Already clean, just move |
-| `components/people/people-table.tsx` | Extract filter logic → `FilterMembersUseCase.ts`; wire through `useMembersController` | Component owns business logic today |
-| `components/fellowships/fellowship-details-content.tsx` | Extract member search → `useFellowshipDetailController` | Component calls `getMembersByFellowship` directly today |
+| `lib/members.ts` | `domain/member/Member.ts` + `data/mock/MemberRepository.ts` | Separate entity from data source |
+| `lib/fellowships.ts` | `domain/fellowship/Fellowship.ts` + `domain/shared/FellowshipRules.ts` + `data/mock/FellowshipRepository.ts` | Three concerns in one file |
+| `lib/people-filters.ts` | `domain/people-filters/PeopleFilter.ts` + `domain/people-filters/FilterRules.ts` | Already clean, just move |
+| `components/people/people-table.tsx` | Extract filter logic → `FilterMembersUseCase.ts`; wire through `MembersPloc` | Component owns business logic today |
+| `components/fellowships/fellowship-details-content.tsx` | Extract member search → `FellowshipsPloc.fetchMembersByFellowship` | Component calls `getMembersByFellowship` directly today |
 
 Move one feature at a time. Each migration is independently testable and safe.
