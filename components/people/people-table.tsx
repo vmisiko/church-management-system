@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import type { PeopleFilterState } from "@/lib/people-filters"
 import useMembersState from "@/application/member/useMembersState"
 import { useMembersPloc } from "@/core/di/DependencyLocator"
+import type { Member } from "@/domain/entities/member/Member"
 
 const statusColors: Record<string, string> = {
   guest: "bg-muted text-muted-foreground",
@@ -31,7 +32,7 @@ interface PeopleTableProps {
 
 export function PeopleTable({ filters }: PeopleTableProps) {
   const ploc = useMembersPloc()
-  const members = useMembersState((s) => s.members ?? [])
+  const members = useMembersState((s) => Array.isArray(s.members) ? s.members : [])
   const loading = useMembersState((s) => s.loading)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
@@ -40,12 +41,21 @@ export function PeopleTable({ filters }: PeopleTableProps) {
     ploc.fetchAll()
   }, [ploc])
 
-  const filteredMembers = members.filter((member) => {
+  const filteredMembers = members.filter((member: Member) => {
     if (filters.status !== "all" && member.status !== filters.status) return false
     if (filters.activityStatus !== "all" && member.activityStatus !== filters.activityStatus) return false
     if (filters.memberType.length > 0 && !filters.memberType.includes(member.memberType)) return false
     if (filters.inFellowship === true && !member.fellowshipId) return false
     if (filters.inFellowship === false && member.fellowshipId) return false
+    if (filters.fellowship !== "all" && member.fellowshipId !== filters.fellowship) return false
+    if (filters.joinDateRange !== "all") {
+      const joined = new Date(member.joinedAt).getTime()
+      const now = Date.now()
+      const day = 86_400_000
+      if (filters.joinDateRange === "week" && now - joined > 7 * day) return false
+      if (filters.joinDateRange === "month" && now - joined > 30 * day) return false
+      if (filters.joinDateRange === "recently" && now - joined > 14 * day) return false
+    }
     return true
   })
 

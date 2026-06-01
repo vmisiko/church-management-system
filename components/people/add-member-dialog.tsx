@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -21,12 +20,20 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
-import { fellowshipSelectOptions } from "@/lib/fellowships"
+import useFellowshipsState from "@/application/fellowship/useFellowshipsState"
+import useDepartmentsState from "@/application/department/useDepartmentsState"
+import useMembersState from "@/application/member/useMembersState"
+import {
+  useFellowshipsPloc,
+  useDepartmentsPloc,
+  useMembersPloc,
+} from "@/core/di/DependencyLocator"
+import type { MemberStatus, MemberType, ActivityStatus } from "@/domain/entities/member/Member"
 
 interface AddMemberDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  defaultFellowshipSlug?: string
+  defaultFellowshipId?: string
 }
 
 const emptyFormData = {
@@ -34,47 +41,63 @@ const emptyFormData = {
   lastName: "",
   email: "",
   phone: "",
-  status: "",
-  fellowship: "",
-  department: "",
+  status: "member" as MemberStatus,
+  memberType: "adult" as MemberType,
+  activityStatus: "active" as ActivityStatus,
+  fellowshipId: "",
+  departmentId: "",
   address: "",
   notes: "",
 }
 
-export function AddMemberDialog({
-  open,
-  onOpenChange,
-  defaultFellowshipSlug,
-}: AddMemberDialogProps) {
-  const [formData, setFormData] = useState(emptyFormData)
+export function AddMemberDialog({ open, onOpenChange, defaultFellowshipId }: AddMemberDialogProps) {
+  const membersPloc = useMembersPloc()
+  const fellowshipsPloc = useFellowshipsPloc()
+  const departmentsPloc = useDepartmentsPloc()
+
+  const fellowships = useFellowshipsState((s) => Array.isArray(s.fellowships) ? s.fellowships : [])
+  const departments = useDepartmentsState((s) => Array.isArray(s.departments) ? s.departments : [])
+  const submitting = useMembersState((s) => s.submitting)
+  const submitError = useMembersState((s) => s.error)
+
+  const [formData, setFormData] = useState({ ...emptyFormData })
+
+  useEffect(() => {
+    fellowshipsPloc.fetchAll()
+    departmentsPloc.fetchAll()
+  }, [fellowshipsPloc, departmentsPloc])
 
   useEffect(() => {
     if (open) {
-      setFormData({
-        ...emptyFormData,
-        fellowship: defaultFellowshipSlug ?? "",
-      })
+      setFormData({ ...emptyFormData, fellowshipId: defaultFellowshipId ?? "" })
     }
-  }, [open, defaultFellowshipSlug])
+  }, [open, defaultFellowshipId])
 
-  const resetForm = () => {
-    setFormData({
-      ...emptyFormData,
-      fellowship: defaultFellowshipSlug ?? "",
-    })
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle form submission
-    console.log("Form submitted:", formData)
-    onOpenChange(false)
-    resetForm()
+    await membersPloc.create({
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email || undefined,
+      phone: formData.phone || undefined,
+      status: formData.status,
+      memberType: formData.memberType,
+      activityStatus: formData.activityStatus,
+      fellowshipId: formData.fellowshipId || undefined,
+    })
+    const error = useMembersState.getState().error
+    if (!error) {
+      if (formData.departmentId) {
+        const newMember = useMembersState.getState().members[0]
+        if (newMember) await membersPloc.assignDepartment(newMember.id, formData.departmentId)
+      }
+      onOpenChange(false)
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Member</DialogTitle>
           <DialogDescription>
@@ -83,7 +106,6 @@ export function AddMemberDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-6 py-4">
-            {/* Name Row */}
             <div className="grid grid-cols-2 gap-4">
               <FieldGroup>
                 <Field>
@@ -93,6 +115,7 @@ export function AddMemberDialog({
                     value={formData.firstName}
                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                     placeholder="Enter first name"
+                    required
                   />
                 </Field>
               </FieldGroup>
@@ -104,12 +127,12 @@ export function AddMemberDialog({
                     value={formData.lastName}
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                     placeholder="Enter last name"
+                    required
                   />
                 </Field>
               </FieldGroup>
             </div>
 
-            {/* Contact Row */}
             <div className="grid grid-cols-2 gap-4">
               <FieldGroup>
                 <Field>
@@ -131,20 +154,19 @@ export function AddMemberDialog({
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="(555) 000-0000"
+                    placeholder="+254 700 000000"
                   />
                 </Field>
               </FieldGroup>
             </div>
 
-            {/* Status Row */}
             <div className="grid grid-cols-3 gap-4">
               <FieldGroup>
                 <Field>
                   <FieldLabel>Status</FieldLabel>
                   <Select
                     value={formData.status}
-                    onValueChange={(value) => setFormData({ ...formData, status: value })}
+                    onValueChange={(v) => setFormData({ ...formData, status: v as MemberStatus })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select status" />
@@ -159,21 +181,56 @@ export function AddMemberDialog({
               </FieldGroup>
               <FieldGroup>
                 <Field>
+                  <FieldLabel>Type</FieldLabel>
+                  <Select
+                    value={formData.memberType}
+                    onValueChange={(v) => setFormData({ ...formData, memberType: v as MemberType })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="adult">Adult</SelectItem>
+                      <SelectItem value="child">Child</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldGroup>
+              <FieldGroup>
+                <Field>
+                  <FieldLabel>Activity</FieldLabel>
+                  <Select
+                    value={formData.activityStatus}
+                    onValueChange={(v) => setFormData({ ...formData, activityStatus: v as ActivityStatus })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select activity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </FieldGroup>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FieldGroup>
+                <Field>
                   <FieldLabel>Fellowship</FieldLabel>
                   <Select
-                    value={formData.fellowship}
-                    onValueChange={(value) => setFormData({ ...formData, fellowship: value })}
+                    value={formData.fellowshipId}
+                    onValueChange={(v) => setFormData({ ...formData, fellowshipId: v === "none" ? "" : v })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select fellowship" />
                     </SelectTrigger>
                     <SelectContent>
-                      {fellowshipSelectOptions.map((fellowship) => (
-                        <SelectItem key={fellowship.value} value={fellowship.value}>
-                          {fellowship.label}
-                        </SelectItem>
-                      ))}
                       <SelectItem value="none">None</SelectItem>
+                      {fellowships.map((f) => (
+                        <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Field>
@@ -182,40 +239,23 @@ export function AddMemberDialog({
                 <Field>
                   <FieldLabel>Department</FieldLabel>
                   <Select
-                    value={formData.department}
-                    onValueChange={(value) => setFormData({ ...formData, department: value })}
+                    value={formData.departmentId}
+                    onValueChange={(v) => setFormData({ ...formData, departmentId: v === "none" ? "" : v })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="choir">Choir</SelectItem>
-                      <SelectItem value="media">Media</SelectItem>
-                      <SelectItem value="ushers">Ushers</SelectItem>
-                      <SelectItem value="children">Children</SelectItem>
-                      <SelectItem value="youth">Youth</SelectItem>
-                      <SelectItem value="welfare">Welfare</SelectItem>
                       <SelectItem value="none">None</SelectItem>
+                      {departments.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </Field>
               </FieldGroup>
             </div>
 
-            {/* Address */}
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="address">Address</FieldLabel>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="Enter home address"
-                />
-              </Field>
-            </FieldGroup>
-
-            {/* Notes */}
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="notes">Notes</FieldLabel>
@@ -228,12 +268,18 @@ export function AddMemberDialog({
                 />
               </Field>
             </FieldGroup>
+
+            {submitError && (
+              <p className="text-sm text-destructive">{submitError}</p>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">Add Member</Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Adding…" : "Add Member"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

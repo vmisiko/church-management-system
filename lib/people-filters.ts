@@ -22,9 +22,9 @@ export const defaultPeopleFilters: PeopleFilterState = {
 
 export const statuses = [
   { value: "all", label: "All Status" },
-  { value: "Guest", label: "Guest" },
-  { value: "Member", label: "Member" },
-  { value: "Leader", label: "Leader" },
+  { value: "guest", label: "Guest" },
+  { value: "member", label: "Member" },
+  { value: "leader", label: "Leader" },
 ]
 
 export const fellowships = fellowshipFilterOptions

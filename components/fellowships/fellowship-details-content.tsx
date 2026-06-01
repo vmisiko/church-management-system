@@ -303,7 +303,6 @@ export function FellowshipDetailsContent({ fellowship }: FellowshipDetailsConten
         <AddMemberDialog
           open={isAddMemberOpen}
           onOpenChange={setIsAddMemberOpen}
-          defaultFellowshipSlug={slug}
         />
         <AddFellowshipDialog
           open={isEditOpen}

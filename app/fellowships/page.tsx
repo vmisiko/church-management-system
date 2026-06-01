@@ -13,21 +13,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, Search, LayoutGrid, List } from "lucide-react"
+import { Plus, Search, LayoutGrid, List, MapPin } from "lucide-react"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import useFellowshipsState from "@/application/fellowship/useFellowshipsState"
 import useFellowshipZonesState from "@/application/fellowship-zone/useFellowshipZonesState"
 import { useFellowshipsPloc, useFellowshipZonesPloc } from "@/core/di/DependencyLocator"
 import type { Fellowship } from "@/domain/entities/fellowship/Fellowship"
+import { AddZoneDialog } from "@/components/fellowships/add-zone-dialog"
 
 export default function FellowshipsPage() {
   const fellowshipsPloc = useFellowshipsPloc()
   const zonesPloc = useFellowshipZonesPloc()
-  const fellowships = useFellowshipsState((s) => s.fellowships ?? [])
+  const fellowships = useFellowshipsState((s) => Array.isArray(s.fellowships) ? s.fellowships : [])
   const loading = useFellowshipsState((s) => s.loading)
-  const fellowshipZones = useFellowshipZonesState((s) => s.fellowshipZones ?? [])
+  const fellowshipZones = useFellowshipZonesState((s) => Array.isArray(s.fellowshipZones) ? s.fellowshipZones : [])
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isAddZoneDialogOpen, setIsAddZoneDialogOpen] = useState(false)
   const [editingFellowship, setEditingFellowship] = useState<Fellowship | null>(null)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
@@ -60,10 +62,16 @@ export default function FellowshipsPage() {
               Manage fellowship groups across Nairobi road zones
             </p>
           </div>
-          <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Create Fellowship
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsAddZoneDialogOpen(true)} className="gap-2">
+              <MapPin className="h-4 w-4" />
+              Add Zone
+            </Button>
+            <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Create Fellowship
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -150,6 +158,7 @@ export default function FellowshipsPage() {
             fellowship={editingFellowship}
           />
         )}
+        <AddZoneDialog open={isAddZoneDialogOpen} onOpenChange={setIsAddZoneDialogOpen} />
       </div>
     </AppShell>
   )

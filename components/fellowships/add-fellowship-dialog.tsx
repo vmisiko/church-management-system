@@ -46,7 +46,7 @@ export function AddFellowshipDialog({
   fellowship,
 }: AddFellowshipDialogProps) {
   const ploc = useFellowshipsPloc()
-  const fellowshipZones = useFellowshipZonesState((s) => s.fellowshipZones ?? [])
+  const fellowshipZones = useFellowshipZonesState((s) => Array.isArray(s.fellowshipZones) ? s.fellowshipZones : [])
   const isEditing = Boolean(fellowship)
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState(emptyFormData)
@@ -63,10 +63,15 @@ export function AddFellowshipDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
+    const payload = {
+      ...formData,
+      meetingTime: formData.meetingTime.slice(0, 5),
+      status: formData.status as 'active' | 'inactive',
+    }
     if (isEditing && fellowship) {
-      await ploc.update(fellowship.id, { ...formData, status: formData.status as 'active' | 'inactive' })
+      await ploc.update(fellowship.id, payload)
     } else {
-      await ploc.create({ ...formData, status: formData.status as 'active' | 'inactive' })
+      await ploc.create(payload)
     }
     setSubmitting(false)
     onOpenChange(false)

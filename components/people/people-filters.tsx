@@ -19,13 +19,15 @@ import {
   activityStatuses,
   countActiveFilters,
   defaultPeopleFilters,
-  departments,
-  fellowships,
   joinDateRanges,
   memberTypes,
   statuses,
   type PeopleFilterState,
 } from "@/lib/people-filters"
+import useFellowshipsState from "@/application/fellowship/useFellowshipsState"
+import useDepartmentsState from "@/application/department/useDepartmentsState"
+import { useFellowshipsPloc, useDepartmentsPloc } from "@/core/di/DependencyLocator"
+import { useEffect } from "react"
 
 interface PeopleFiltersProps {
   filters: PeopleFilterState
@@ -77,6 +79,25 @@ function FilterSelect({
 }
 
 export function PeopleFilters({ filters, onFiltersChange }: PeopleFiltersProps) {
+  const fellowshipsPloc = useFellowshipsPloc()
+  const departmentsPloc = useDepartmentsPloc()
+  const apiFellowships = useFellowshipsState((s) => Array.isArray(s.fellowships) ? s.fellowships : [])
+  const apiDepartments = useDepartmentsState((s) => Array.isArray(s.departments) ? s.departments : [])
+
+  useEffect(() => {
+    fellowshipsPloc.fetchAll()
+    departmentsPloc.fetchAll()
+  }, [fellowshipsPloc, departmentsPloc])
+
+  const fellowshipOptions = [
+    { value: "all", label: "All Fellowships" },
+    ...apiFellowships.map((f) => ({ value: f.id, label: f.name })),
+  ]
+  const departmentOptions = [
+    { value: "all", label: "All Departments" },
+    ...apiDepartments.map((d) => ({ value: d.id, label: d.name })),
+  ]
+
   const activeCount = countActiveFilters(filters)
   const fellowshipDisabled = filters.inFellowship === false
 
@@ -181,7 +202,7 @@ export function PeopleFilters({ filters, onFiltersChange }: PeopleFiltersProps) 
           <FilterSelect
             value={filters.fellowship}
             onValueChange={(value) => update({ fellowship: value })}
-            options={fellowships}
+            options={fellowshipOptions}
             disabled={fellowshipDisabled}
           />
           {fellowshipDisabled && (
@@ -197,7 +218,7 @@ export function PeopleFilters({ filters, onFiltersChange }: PeopleFiltersProps) 
           <FilterSelect
             value={filters.department}
             onValueChange={(value) => update({ department: value })}
-            options={departments}
+            options={departmentOptions}
           />
         </FilterSection>
 
@@ -273,7 +294,7 @@ export function PeopleFilters({ filters, onFiltersChange }: PeopleFiltersProps) 
                 )}
                 {filters.fellowship !== "all" && (
                   <Badge variant="outline" className="gap-1 pr-1 text-xs">
-                    {filters.fellowship}
+                    {fellowshipOptions.find((f) => f.value === filters.fellowship)?.label ?? filters.fellowship}
                     <button
                       type="button"
                       onClick={() => update({ fellowship: "all" })}
@@ -285,7 +306,7 @@ export function PeopleFilters({ filters, onFiltersChange }: PeopleFiltersProps) 
                 )}
                 {filters.department !== "all" && (
                   <Badge variant="outline" className="gap-1 pr-1 text-xs">
-                    {filters.department}
+                    {departmentOptions.find((d) => d.value === filters.department)?.label ?? filters.department}
                     <button
                       type="button"
                       onClick={() => update({ department: "all" })}

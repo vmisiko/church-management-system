@@ -11,6 +11,11 @@ import type {
   MemberDepartment,
 } from '@/domain/entities/member/Member'
 
+interface MembersListResponse {
+  data: Member[]
+  total: number
+}
+
 export class MemberRepository extends BaseRepository implements IMemberRepository {
   constructor({ axios }: { axios: CustomAxios }) {
     super({ axios })
@@ -18,8 +23,8 @@ export class MemberRepository extends BaseRepository implements IMemberRepositor
 
   async getAll(): Promise<Either<DataError, Member[]>> {
     try {
-      const { data } = await this.axios.get<Member[]>('/api/members')
-      return Either.right(data)
+      const { data } = await this.axios.get<MembersListResponse>('/api/members')
+      return Either.right((data as MembersListResponse).data)
     } catch (error) {
       return Either.left(mapToDataError(error))
     }
