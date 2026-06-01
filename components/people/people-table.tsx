@@ -31,7 +31,8 @@ interface PeopleTableProps {
 
 export function PeopleTable({ filters }: PeopleTableProps) {
   const ploc = useMembersPloc()
-  const { members, loading } = useMembersState()
+  const members = useMembersState((s) => s.members ?? [])
+  const loading = useMembersState((s) => s.loading)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 

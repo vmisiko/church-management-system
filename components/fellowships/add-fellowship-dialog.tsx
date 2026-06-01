@@ -46,7 +46,7 @@ export function AddFellowshipDialog({
   fellowship,
 }: AddFellowshipDialogProps) {
   const ploc = useFellowshipsPloc()
-  const { fellowshipZones } = useFellowshipZonesState()
+  const fellowshipZones = useFellowshipZonesState((s) => s.fellowshipZones ?? [])
   const isEditing = Boolean(fellowship)
   const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState(emptyFormData)

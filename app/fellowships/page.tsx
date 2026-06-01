@@ -23,8 +23,9 @@ import type { Fellowship } from "@/domain/entities/fellowship/Fellowship"
 export default function FellowshipsPage() {
   const fellowshipsPloc = useFellowshipsPloc()
   const zonesPloc = useFellowshipZonesPloc()
-  const { fellowships, loading } = useFellowshipsState()
-  const { fellowshipZones } = useFellowshipZonesState()
+  const fellowships = useFellowshipsState((s) => s.fellowships ?? [])
+  const loading = useFellowshipsState((s) => s.loading)
+  const fellowshipZones = useFellowshipZonesState((s) => s.fellowshipZones ?? [])
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [editingFellowship, setEditingFellowship] = useState<Fellowship | null>(null)
