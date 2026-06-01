@@ -33,6 +33,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useRouter } from "next/navigation"
+import useAuthState from "@/application/auth/useAuthState"
+import { useAuthPloc } from "@/core/di/DependencyLocator"
 
 const navGroups = [
   {
@@ -72,22 +75,34 @@ interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
+  const router = useRouter()
+  const ploc = useAuthPloc()
+  const { accessToken, currentUser } = useAuthState()
   const [currentPath, setCurrentPath] = useState("/")
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    // Only access window.location after mounting on the client
     setCurrentPath(window.location.pathname)
     setMounted(true)
 
-    // Listen for navigation changes
-    const handlePopState = () => {
-      setCurrentPath(window.location.pathname)
-    }
-
+    const handlePopState = () => setCurrentPath(window.location.pathname)
     window.addEventListener("popstate", handlePopState)
     return () => window.removeEventListener("popstate", handlePopState)
   }, [])
+
+  // Auth guard — redirect to login if no token
+  useEffect(() => {
+    if (mounted && !accessToken) {
+      router.push("/login")
+    }
+  }, [mounted, accessToken, router])
+
+  // Load current user profile if not yet loaded
+  useEffect(() => {
+    if (accessToken && !currentUser) {
+      ploc.fetchMe()
+    }
+  }, [accessToken, currentUser, ploc])
 
   const handleNavigation = (href: string) => {
     setCurrentPath(href)
@@ -202,12 +217,14 @@ export function AppShell({ children }: AppShellProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2 px-2">
                   <div className="text-right hidden sm:block">
-                    <p className="text-sm font-medium">Pastor Profile</p>
-                    <p className="text-xs text-muted-foreground">Super Admin</p>
+                    <p className="text-sm font-medium">{currentUser?.email ?? "Loading…"}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{currentUser?.role?.replace("_", " ") ?? ""}</p>
                   </div>
                   <Avatar className="h-9 w-9">
                     <AvatarImage src="/placeholder-avatar.jpg" alt="Pastor" />
-                    <AvatarFallback className="bg-primary text-primary-foreground">PA</AvatarFallback>
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {currentUser?.email?.slice(0, 2).toUpperCase() ?? "??"}
+                    </AvatarFallback>
                   </Avatar>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </Button>
@@ -219,7 +236,12 @@ export function AppShell({ children }: AppShellProps) {
                 <DropdownMenuItem>Church Settings</DropdownMenuItem>
                 <DropdownMenuItem>Activity Log</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive">Sign Out</DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() => ploc.logout(() => router.push("/login"))}
+                >
+                  Sign Out
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

@@ -12,17 +12,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Users, MapPin, Clock, MoreVertical, Edit, Trash2, Eye } from "lucide-react"
-import { fellowshipSlug, fellowshipZoneColors, type FellowshipRecord } from "@/lib/fellowships"
+import type { Fellowship } from "@/domain/entities/fellowship/Fellowship"
 
 interface FellowshipCardProps {
-  fellowship: FellowshipRecord
+  fellowship: Fellowship
+  zoneName: string
   viewMode: "grid" | "list"
-  onEdit?: (fellowship: FellowshipRecord) => void
+  onEdit?: (fellowship: Fellowship) => void
 }
 
-export function FellowshipCard({ fellowship, viewMode, onEdit }: FellowshipCardProps) {
-  const slug = fellowshipSlug(fellowship.name)
-  const detailsHref = `/fellowships/${slug}`
+export function FellowshipCard({ fellowship, zoneName, viewMode, onEdit }: FellowshipCardProps) {
+  const detailsHref = `/fellowships/${fellowship.slug}`
 
   const initials = fellowship.name
     .split(" ")
@@ -49,13 +49,9 @@ export function FellowshipCard({ fellowship, viewMode, onEdit }: FellowshipCardP
               </div>
             </div>
             <div className="flex items-center gap-6">
-              <Badge className={fellowshipZoneColors[fellowship.zone] || "bg-secondary"}>
-                {fellowship.zone}
+              <Badge className="bg-secondary">
+                {zoneName}
               </Badge>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Users className="h-4 w-4" />
-                <span>{fellowship.members} members</span>
-              </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
                 <span>{fellowship.meetingDay}s at {fellowship.meetingTime}</span>
@@ -104,9 +100,7 @@ export function FellowshipCard({ fellowship, viewMode, onEdit }: FellowshipCardP
               <Link href={detailsHref} className="font-semibold hover:text-primary transition-colors">
                 {fellowship.name}
               </Link>
-              <Badge className={`${fellowshipZoneColors[fellowship.zone] || "bg-secondary"} text-xs`}>
-                {fellowship.zone}
-              </Badge>
+              <Badge className="bg-secondary text-xs">{zoneName}</Badge>
             </div>
           </div>
           <DropdownMenu>
@@ -136,11 +130,6 @@ export function FellowshipCard({ fellowship, viewMode, onEdit }: FellowshipCardP
       </CardHeader>
       <CardContent className="pt-0">
         <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">{fellowship.members}</span>
-            <span className="text-muted-foreground">members</span>
-          </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="h-4 w-4" />
             <span>{fellowship.meetingDay}s at {fellowship.meetingTime}</span>
@@ -149,12 +138,10 @@ export function FellowshipCard({ fellowship, viewMode, onEdit }: FellowshipCardP
             <MapPin className="h-4 w-4" />
             <span className="truncate">{fellowship.location}</span>
           </div>
-        </div>
-        <div className="mt-4 pt-4 border-t">
-          <p className="text-sm">
-            <span className="text-muted-foreground">Leader:</span>{" "}
-            <span className="font-medium">{fellowship.leader}</span>
-          </p>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Users className="h-4 w-4" />
+            <span className="capitalize">{fellowship.status}</span>
+          </div>
         </div>
       </CardContent>
     </Card>

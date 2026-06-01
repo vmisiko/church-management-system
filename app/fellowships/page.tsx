@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AppShell } from "@/components/app-shell"
 import { FellowshipCard } from "@/components/fellowships/fellowship-card"
 import { AddFellowshipDialog } from "@/components/fellowships/add-fellowship-dialog"
@@ -15,23 +15,38 @@ import {
 } from "@/components/ui/select"
 import { Plus, Search, LayoutGrid, List } from "lucide-react"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { mockFellowships, type FellowshipRecord } from "@/lib/fellowships"
+import useFellowshipsState from "@/application/fellowship/useFellowshipsState"
+import useFellowshipZonesState from "@/application/fellowship-zone/useFellowshipZonesState"
+import { useFellowshipsPloc, useFellowshipZonesPloc } from "@/core/di/DependencyLocator"
+import type { Fellowship } from "@/domain/entities/fellowship/Fellowship"
 
 export default function FellowshipsPage() {
+  const fellowshipsPloc = useFellowshipsPloc()
+  const zonesPloc = useFellowshipZonesPloc()
+  const { fellowships, loading } = useFellowshipsState()
+  const { fellowshipZones } = useFellowshipZonesState()
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [editingFellowship, setEditingFellowship] = useState<FellowshipRecord | null>(null)
+  const [editingFellowship, setEditingFellowship] = useState<Fellowship | null>(null)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [zoneFilter, setZoneFilter] = useState("all")
 
-  const filteredFellowships = mockFellowships.filter((f) => {
-    const matchesSearch = f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      f.leader.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesZone = zoneFilter === "all" || f.zone === zoneFilter
+  useEffect(() => {
+    fellowshipsPloc.fetchAll()
+    zonesPloc.fetchAll()
+  }, [fellowshipsPloc, zonesPloc])
+
+  const zoneNameMap = Object.fromEntries(fellowshipZones.map((z) => [z.id, z.name]))
+
+  const filteredFellowships = fellowships.filter((f) => {
+    const zoneName = zoneNameMap[f.zoneId] ?? ""
+    const matchesSearch = f.name.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesZone = zoneFilter === "all" || f.zoneId === zoneFilter
     return matchesSearch && matchesZone
   })
 
-  const zones = [...new Set(mockFellowships.map((f) => f.zone))]
+  const zones = fellowshipZones
 
   return (
     <AppShell>
@@ -68,7 +83,7 @@ export default function FellowshipsPage() {
             <SelectContent>
               <SelectItem value="all">All Zones</SelectItem>
               {zones.map((zone) => (
-                <SelectItem key={zone} value={zone}>{zone}</SelectItem>
+                <SelectItem key={zone.id} value={zone.id}>{zone.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -87,46 +102,53 @@ export default function FellowshipsPage() {
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
           <div className="rounded-lg bg-primary/10 p-4">
-            <p className="text-2xl font-bold text-primary">{mockFellowships.length}</p>
+            <p className="text-2xl font-bold text-primary">{fellowships.length}</p>
             <p className="text-sm text-muted-foreground">Total Fellowships</p>
           </div>
           <div className="rounded-lg bg-accent/20 p-4">
             <p className="text-2xl font-bold text-accent-foreground">{zones.length}</p>
             <p className="text-sm text-muted-foreground">Active Zones</p>
           </div>
-          <div className="rounded-lg bg-success/20 p-4">
-            <p className="text-2xl font-bold text-success">{mockFellowships.reduce((acc, f) => acc + f.members, 0).toLocaleString()}</p>
-            <p className="text-sm text-muted-foreground">Total Members</p>
-          </div>
           <div className="rounded-lg bg-secondary p-4">
-            <p className="text-2xl font-bold">{Math.round(mockFellowships.reduce((acc, f) => acc + f.members, 0) / mockFellowships.length)}</p>
-            <p className="text-sm text-muted-foreground">Avg. per Fellowship</p>
+            <p className="text-2xl font-bold">{fellowships.filter((f) => f.status === "active").length}</p>
+            <p className="text-sm text-muted-foreground">Active Fellowships</p>
           </div>
         </div>
 
         {/* Fellowship Grid */}
-        <div className={viewMode === "grid" 
-          ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" 
-          : "flex flex-col gap-4"
-        }>
-          {filteredFellowships.map((fellowship) => (
-            <FellowshipCard
-              key={fellowship.id}
-              fellowship={fellowship}
-              viewMode={viewMode}
-              onEdit={setEditingFellowship}
-            />
-          ))}
-        </div>
+        {loading && fellowships.length === 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-lg border bg-card h-48 animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className={viewMode === "grid"
+            ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+            : "flex flex-col gap-4"
+          }>
+            {filteredFellowships.map((fellowship) => (
+              <FellowshipCard
+                key={fellowship.id}
+                fellowship={fellowship}
+                zoneName={zoneNameMap[fellowship.zoneId] ?? "Unknown Zone"}
+                viewMode={viewMode}
+                onEdit={setEditingFellowship}
+              />
+            ))}
+          </div>
+        )}
 
         <AddFellowshipDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} />
-        <AddFellowshipDialog
-          open={Boolean(editingFellowship)}
-          onOpenChange={(open) => !open && setEditingFellowship(null)}
-          fellowship={editingFellowship ?? undefined}
-        />
+        {editingFellowship && (
+          <AddFellowshipDialog
+            open={true}
+            onOpenChange={(open) => !open && setEditingFellowship(null)}
+            fellowship={editingFellowship}
+          />
+        )}
       </div>
     </AppShell>
   )

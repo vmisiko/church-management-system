@@ -20,22 +20,19 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
-import {
-  fellowshipToFormData,
-  fellowshipZoneOptions,
-  type FellowshipRecord,
-} from "@/lib/fellowships"
+import type { Fellowship } from "@/domain/entities/fellowship/Fellowship"
+import useFellowshipZonesState from "@/application/fellowship-zone/useFellowshipZonesState"
+import { useFellowshipsPloc } from "@/core/di/DependencyLocator"
 
 interface AddFellowshipDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  fellowship?: FellowshipRecord
+  fellowship?: Fellowship
 }
 
 const emptyFormData = {
   name: "",
-  zone: "",
-  leader: "",
+  zoneId: "",
   meetingDay: "",
   meetingTime: "",
   location: "",
@@ -48,24 +45,31 @@ export function AddFellowshipDialog({
   onOpenChange,
   fellowship,
 }: AddFellowshipDialogProps) {
+  const ploc = useFellowshipsPloc()
+  const { fellowshipZones } = useFellowshipZonesState()
   const isEditing = Boolean(fellowship)
+  const [submitting, setSubmitting] = useState(false)
   const [formData, setFormData] = useState(emptyFormData)
 
   useEffect(() => {
     if (open) {
-      setFormData(fellowship ? fellowshipToFormData(fellowship) : emptyFormData)
+      setFormData(fellowship
+        ? { name: fellowship.name, zoneId: fellowship.zoneId, meetingDay: fellowship.meetingDay, meetingTime: fellowship.meetingTime, location: fellowship.location, description: fellowship.description ?? "", status: fellowship.status }
+        : emptyFormData
+      )
     }
   }, [open, fellowship])
 
-  const resetForm = () => {
-    setFormData(fellowship ? fellowshipToFormData(fellowship) : emptyFormData)
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log(isEditing ? "Fellowship updated:" : "Fellowship created:", formData)
+    setSubmitting(true)
+    if (isEditing && fellowship) {
+      await ploc.update(fellowship.id, { ...formData, status: formData.status as 'active' | 'inactive' })
+    } else {
+      await ploc.create({ ...formData, status: formData.status as 'active' | 'inactive' })
+    }
+    setSubmitting(false)
     onOpenChange(false)
-    resetForm()
   }
 
   return (
@@ -98,16 +102,16 @@ export function AddFellowshipDialog({
                 <Field>
                   <FieldLabel>Zone</FieldLabel>
                   <Select
-                    value={formData.zone}
-                    onValueChange={(value) => setFormData({ ...formData, zone: value })}
+                    value={formData.zoneId}
+                    onValueChange={(value) => setFormData({ ...formData, zoneId: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select zone" />
                     </SelectTrigger>
                     <SelectContent>
-                      {fellowshipZoneOptions.map((zone) => (
-                        <SelectItem key={zone.value} value={zone.value}>
-                          {zone.label}
+                      {fellowshipZones.map((zone) => (
+                        <SelectItem key={zone.id} value={zone.id}>
+                          {zone.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -116,13 +120,19 @@ export function AddFellowshipDialog({
               </FieldGroup>
               <FieldGroup>
                 <Field>
-                  <FieldLabel htmlFor="leader">Fellowship Leader</FieldLabel>
-                  <Input
-                    id="leader"
-                    value={formData.leader}
-                    onChange={(e) => setFormData({ ...formData, leader: e.target.value })}
-                    placeholder="Leader name"
-                  />
+                  <FieldLabel>Status</FieldLabel>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) => setFormData({ ...formData, status: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </Field>
               </FieldGroup>
             </div>
@@ -188,31 +198,12 @@ export function AddFellowshipDialog({
               </Field>
             </FieldGroup>
 
-            <div className="grid grid-cols-2 gap-4">
-              <FieldGroup>
-                <Field>
-                  <FieldLabel>Status</FieldLabel>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value) => setFormData({ ...formData, status: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-              </FieldGroup>
-            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">{isEditing ? "Save Changes" : "Create Fellowship"}</Button>
+            <Button type="submit" disabled={submitting}>{isEditing ? "Save Changes" : "Create Fellowship"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

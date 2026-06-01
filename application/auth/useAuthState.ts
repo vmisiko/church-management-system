@@ -3,40 +3,38 @@ import { createJSONStorage, persist } from 'zustand/middleware'
 
 export interface AuthState {
   accessToken: string | null
-  refreshToken: string | null
+  currentUser: { id: string; email: string; role: string } | null
 
-  otpLoading: boolean
   loginLoading: boolean
   logoutLoading: boolean
-  refreshLoading: boolean
+  meLoading: boolean
 
-  otpError: string | null
   loginError: string | null
   logoutError: string | null
-  refreshError: string | null
 }
 
 const useAuthState = create<AuthState>()(
-  persist((): AuthState => ({
-  accessToken: null,
-  refreshToken: null,
+  persist(
+    (): AuthState => ({
+      accessToken: null,
+      currentUser: null,
 
-  otpLoading: false,
-  loginLoading: false,
-  logoutLoading: false,
-  refreshLoading: false,
+      loginLoading: false,
+      logoutLoading: false,
+      meLoading: false,
 
-  otpError: null,
-  loginError: null,
-  logoutError: null,
-  refreshError: null,
-}), {
-  name: 'tumamtuma-auth',
-  partialize: (state: AuthState) => ({
-    accessToken: state.accessToken,
-    refreshToken: state.refreshToken,
-  }),
-  storage: createJSONStorage(() => localStorage),
-}))
+      loginError: null,
+      logoutError: null,
+    }),
+    {
+      name: 'cms-auth',
+      partialize: (state) => ({
+        accessToken: state.accessToken,
+        currentUser: state.currentUser,
+      }),
+      storage: createJSONStorage(() => localStorage),
+    },
+  ),
+)
 
 export default useAuthState
