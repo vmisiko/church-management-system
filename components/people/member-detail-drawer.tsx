@@ -22,7 +22,21 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
-import { Pencil, Trash2, Phone, Mail, Calendar, Users, Building2 } from "lucide-react"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import { cn } from "@/lib/utils"
+import { Pencil, Trash2, Phone, Mail, Calendar, Users, Building2, Check, ChevronsUpDown } from "lucide-react"
 import useMembersState from "@/application/member/useMembersState"
 import useFellowshipsState from "@/application/fellowship/useFellowshipsState"
 import useDepartmentsState from "@/application/department/useDepartmentsState"
@@ -65,6 +79,7 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
 
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deptPopoverOpen, setDeptPopoverOpen] = useState(false)
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -74,7 +89,7 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
     memberType: "adult" as MemberType,
     activityStatus: "active" as ActivityStatus,
     fellowshipId: "",
-    departmentId: "",
+    departmentIds: [] as string[],
   })
 
   useEffect(() => {
@@ -107,7 +122,7 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
   useEffect(() => {
     setFormData((prev) => ({
       ...prev,
-      departmentId: memberDepartments[0]?.id ?? "",
+      departmentIds: memberDepartments.map((d) => d.id),
     }))
   }, [memberDepartments])
 
@@ -127,11 +142,18 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
     })
     if (useMembersState.getState().error) return
 
-    const currentDeptId = memberDepartments[0]?.id ?? ""
-    const newDeptId = formData.departmentId
-    if (currentDeptId !== newDeptId) {
-      if (currentDeptId) await membersPloc.removeDepartment(memberId, currentDeptId)
-      if (newDeptId) await membersPloc.assignDepartment(memberId, newDeptId)
+    const currentIds = new Set(memberDepartments.map((d) => d.id))
+    const newIds = new Set(formData.departmentIds)
+    const toRemove = [...currentIds].filter((id) => !newIds.has(id))
+    const toAdd = [...newIds].filter((id) => !currentIds.has(id))
+
+    for (const id of toRemove) {
+      await membersPloc.removeDepartment(memberId, id)
+      if (useMembersState.getState().error) return
+    }
+    for (const id of toAdd) {
+      await membersPloc.assignDepartment(memberId, id)
+      if (useMembersState.getState().error) return
     }
 
     if (!useMembersState.getState().error) setEditing(false)
@@ -324,21 +346,63 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
 
                   <FieldGroup>
                     <Field>
-                      <FieldLabel>Department</FieldLabel>
-                      <Select
-                        value={formData.departmentId || "none"}
-                        onValueChange={(v) => setFormData({ ...formData, departmentId: v === "none" ? "" : v })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          {departments.map((d) => (
-                            <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FieldLabel>Departments</FieldLabel>
+                      <Popover open={deptPopoverOpen} onOpenChange={setDeptPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            role="combobox"
+                            className="w-full justify-between font-normal min-h-9 h-auto"
+                          >
+                            {formData.departmentIds.length === 0 ? (
+                              <span className="text-muted-foreground">None</span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {formData.departmentIds.map((id) => {
+                                  const dept = departments.find((d) => d.id === id)
+                                  return dept ? (
+                                    <Badge key={id} variant="secondary" className="text-xs">
+                                      {dept.name}
+                                    </Badge>
+                                  ) : null
+                                })}
+                              </div>
+                            )}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Search departments…" />
+                            <CommandList>
+                              <CommandEmpty>No departments found.</CommandEmpty>
+                              <CommandGroup>
+                                {departments.map((dept) => {
+                                  const selected = formData.departmentIds.includes(dept.id)
+                                  return (
+                                    <CommandItem
+                                      key={dept.id}
+                                      value={dept.name}
+                                      onSelect={() => {
+                                        setFormData({
+                                          ...formData,
+                                          departmentIds: selected
+                                            ? formData.departmentIds.filter((id) => id !== dept.id)
+                                            : [...formData.departmentIds, dept.id],
+                                        })
+                                      }}
+                                    >
+                                      <Check className={cn("mr-2 h-4 w-4", selected ? "opacity-100" : "opacity-0")} />
+                                      {dept.name}
+                                    </CommandItem>
+                                  )
+                                })}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </Field>
                   </FieldGroup>
 
