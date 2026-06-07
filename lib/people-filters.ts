@@ -30,16 +30,6 @@ export const statuses = [
 
 export const fellowships = fellowshipFilterOptions
 
-export const departments = [
-  { value: "all", label: "All Departments" },
-  { value: "Choir", label: "Choir" },
-  { value: "Media", label: "Media" },
-  { value: "Ushers", label: "Ushers" },
-  { value: "Children", label: "Children" },
-  { value: "Youth", label: "Youth" },
-  { value: "Welfare", label: "Welfare" },
-]
-
 export const memberTypes = [
   { value: "adult", label: "Adult" },
   { value: "child", label: "Child" },
@@ -96,7 +86,8 @@ export function toMemberQueryParams(filters: PeopleFilterState): MemberQueryPara
 
   if (filters.joinDateRange !== "all") {
     const day = 86_400_000
-    const days = filters.joinDateRange === "week" ? 7 : filters.joinDateRange === "month" ? 30 : 14
+    const daysMap: Record<string, number> = { week: 7, month: 30, recently: 14 }
+    const days = daysMap[filters.joinDateRange] ?? 14
     params.joinedAfter = new Date(Date.now() - days * day).toISOString()
   }
 

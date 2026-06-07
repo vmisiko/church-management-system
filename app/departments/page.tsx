@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   DropdownMenu,
@@ -26,6 +25,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Plus, MoreVertical, Users } from "lucide-react"
+import Link from "next/link"
 import { useDepartmentsPloc, useMembersPloc } from "@/core/di/DependencyLocator"
 import useDepartmentsState from "@/application/department/useDepartmentsState"
 import useMembersState from "@/application/member/useMembersState"
@@ -118,9 +118,6 @@ export default function DepartmentsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             {departments.map((dept, idx) => {
               const color = CARD_COLORS[idx % CARD_COLORS.length]
-              const memberProgress = dept.memberTarget
-                ? Math.min(100, Math.round(((dept.memberTarget ?? 0) / dept.memberTarget) * 100))
-                : 0
               const headName = dept.headId ? memberMap[dept.headId] : null
 
               return (
@@ -163,15 +160,7 @@ export default function DepartmentsPage() {
                       <p className="text-xs text-muted-foreground line-clamp-2">{dept.description}</p>
                     )}
 
-                    {dept.memberTarget ? (
-                      <div>
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-muted-foreground">Member Target</span>
-                          <span className="font-medium">{dept.memberTarget}</span>
-                        </div>
-                        <Progress value={memberProgress} className="h-1.5" />
-                      </div>
-                    ) : null}
+                    <p className="text-xs text-muted-foreground">Target: {dept.memberTarget ?? "—"} members</p>
 
                     <div className="flex items-center gap-2 pt-2 border-t">
                       <Avatar className="h-6 w-6 shrink-0">
@@ -183,6 +172,13 @@ export default function DepartmentsPage() {
                         {headName ?? "No head assigned"}
                       </span>
                     </div>
+
+                    <Button asChild variant="outline" size="sm" className="w-full mt-2">
+                      <Link href={`/people?departmentId=${dept.id}`}>
+                        <Users className="h-4 w-4 mr-2" />
+                        View Members
+                      </Link>
+                    </Button>
                   </CardContent>
                 </Card>
               )
