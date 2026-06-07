@@ -63,11 +63,11 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
   }
 
   async fetchById(id: string): Promise<void> {
-    this.store.setState({ loading: true, error: null })
+    this.store.setState({ drawerLoading: true, error: null })
     const result = await this.getMemberByIdUseCase.execute(id)
     result.fold(
-      (error) => this.store.setState({ loading: false, error: this.handleError(error) }),
-      (currentMember) => this.store.setState({ loading: false, currentMember }),
+      (error) => this.store.setState({ drawerLoading: false, error: this.handleError(error) }),
+      (currentMember) => this.store.setState({ drawerLoading: false, currentMember }),
     )
   }
 
@@ -116,11 +116,11 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
   }
 
   async fetchDepartments(memberId: string): Promise<void> {
-    this.store.setState({ loading: true, error: null })
+    this.store.setState({ drawerLoading: true, error: null })
     const result = await this.getMemberDepartmentsUseCase.execute(memberId)
     result.fold(
-      (error) => this.store.setState({ loading: false, error: this.handleError(error) }),
-      (memberDepartments) => this.store.setState({ loading: false, memberDepartments }),
+      (error) => this.store.setState({ drawerLoading: false, error: this.handleError(error) }),
+      (memberDepartments) => this.store.setState({ drawerLoading: false, memberDepartments }),
     )
   }
 

@@ -6,6 +6,7 @@ export interface MembersState {
   currentMember: Member | null
   memberDepartments: MemberDepartment[]
   loading: boolean
+  drawerLoading: boolean
   submitting: boolean
   error: string | null
 }
@@ -16,6 +17,7 @@ const useMembersState = create<MembersState>(
     currentMember: null,
     memberDepartments: [],
     loading: false,
+    drawerLoading: false,
     submitting: false,
     error: null,
   }),

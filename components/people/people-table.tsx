@@ -129,17 +129,24 @@ export function PeopleTable({ filters, onMemberClick }: PeopleTableProps) {
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-1">
-            {Array.from({ length: Math.min(3, totalPages) }, (_, i) => (
-              <Button
-                key={i + 1}
-                variant={currentPage === i + 1 ? "default" : "outline"}
-                size="icon"
-                onClick={() => setCurrentPage(i + 1)}
-                className="h-8 w-8"
-              >
-                {i + 1}
-              </Button>
-            ))}
+            {(() => {
+              const windowStart = Math.max(1, Math.min(currentPage - 2, totalPages - 4))
+              const windowEnd = Math.min(totalPages, windowStart + 4)
+              return Array.from({ length: windowEnd - windowStart + 1 }, (_, i) => {
+                const page = windowStart + i
+                return (
+                  <Button
+                    key={page}
+                    variant={page === currentPage ? "default" : "outline"}
+                    size="icon"
+                    onClick={() => setCurrentPage(page)}
+                    className="h-8 w-8"
+                  >
+                    {page}
+                  </Button>
+                )
+              })
+            })()}
           </div>
           <Button
             variant="outline"
