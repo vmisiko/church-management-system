@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -9,8 +9,10 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Select,
   SelectContent,
@@ -18,6 +20,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet"
 import {
   Table,
   TableBody,
@@ -30,145 +39,296 @@ import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import {
   Send,
   MessageSquare,
-  Mail,
   Users,
   Clock,
   CheckCircle2,
   XCircle,
   AlertCircle,
   FileText,
-  Search,
+  BarChart2,
+  Plus,
 } from "lucide-react"
-import { getFellowshipBySlug } from "@/lib/fellowships"
+import { useMessagingPloc, useFellowshipsPloc, useDepartmentsPloc, useFellowshipZonesPloc } from "@/core/di/DependencyLocator"
+import useMessagingState from "@/application/messaging/useMessagingState"
+import useFellowshipsState from "@/application/fellowship/useFellowshipsState"
+import useDepartmentsState from "@/application/department/useDepartmentsState"
+import useFellowshipZonesState from "@/application/fellowship-zone/useFellowshipZonesState"
+import type { CreateMessageRequest, MessageType, MessageTargetGroup, Message } from "@/domain/entities/messaging/Message"
 
-const messageHistory = [
-  {
-    id: "1",
-    title: "Sunday Service Reminder",
-    type: "sms",
-    recipients: "All Members",
-    count: 2480,
-    sent: "2024-03-30 08:00",
-    status: "delivered",
-    deliveryRate: 98,
-  },
-  {
-    id: "2",
-    title: "Easter Celebration Invite",
-    type: "email",
-    recipients: "All Members + Guests",
-    count: 2856,
-    sent: "2024-03-28 10:30",
-    status: "delivered",
-    deliveryRate: 95,
-  },
-  {
-    id: "3",
-    title: "Fellowship Meeting Reschedule",
-    type: "sms",
-    recipients: "Kawangware Fellowship",
-    count: 156,
-    sent: "2024-03-25 14:00",
-    status: "delivered",
-    deliveryRate: 100,
-  },
-  {
-    id: "4",
-    title: "Youth Conference Registration",
-    type: "email",
-    recipients: "Youth Department",
-    count: 245,
-    sent: "2024-03-22 09:00",
-    status: "delivered",
-    deliveryRate: 92,
-  },
-  {
-    id: "5",
-    title: "Choir Rehearsal Notice",
-    type: "sms",
-    recipients: "Choir Department",
-    count: 45,
-    sent: "2024-03-20 16:00",
-    status: "failed",
-    deliveryRate: 0,
-  },
-]
+const typeLabels: Record<MessageType, string> = {
+  announcement: "Announcement",
+  newsletter: "Newsletter",
+  reminder: "Reminder",
+  alert: "Alert",
+}
 
-const templates = [
-  { id: "1", name: "Sunday Service Reminder", category: "Weekly" },
-  { id: "2", name: "Birthday Wishes", category: "Personal" },
-  { id: "3", name: "Event Invitation", category: "Events" },
-  { id: "4", name: "Meeting Reminder", category: "Meetings" },
-  { id: "5", name: "Offering Acknowledgment", category: "Finance" },
-]
+const targetGroupLabels: Record<MessageTargetGroup, string> = {
+  all: "All Members",
+  fellowship: "Fellowship",
+  department: "Department",
+  zone: "Zone",
+}
 
-const statusStyles = {
-  delivered: "bg-success/20 text-success",
-  pending: "bg-warning/20 text-warning",
+const statusColors = {
+  draft: "bg-muted text-muted-foreground",
+  sent: "bg-primary text-primary-foreground",
+}
+
+const deliveryStatusColors = {
+  pending: "bg-muted text-muted-foreground",
+  sent: "bg-blue-100 text-blue-800",
+  delivered: "bg-green-100 text-green-800",
   failed: "bg-destructive/20 text-destructive",
 }
 
-const statusIcons = {
-  delivered: CheckCircle2,
-  pending: Clock,
-  failed: XCircle,
-}
-
-const baseRecipientGroups = [
-  { id: "all", label: "All Members", count: 2480 },
-  { id: "leaders", label: "Leadership", count: 45 },
-  { id: "youth", label: "Youth Department", count: 245 },
-  { id: "choir", label: "Choir Department", count: 45 },
-  { id: "ushers", label: "Ushers Department", count: 52 },
-  { id: "fellowships", label: "Fellowship Leaders", count: 15 },
+const templates = [
+  { id: "1", name: "Sunday Service Reminder", category: "Weekly", body: "Dear {name}, this is a reminder about our Sunday service at 10am. God bless you!" },
+  { id: "2", name: "Event Invitation", category: "Events", body: "You are cordially invited to our upcoming church event. We look forward to seeing you!" },
+  { id: "3", name: "Meeting Reminder", category: "Meetings", body: "This is a reminder about the meeting scheduled for {date}. Please confirm your attendance." },
+  { id: "4", name: "Offering Acknowledgment", category: "Finance", body: "Thank you for your generous offering. Your contribution supports our ministry." },
 ]
+
+function CampaignDetailDrawer({
+  message,
+  open,
+  onOpenChange,
+}: {
+  message: Message | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const ploc = useMessagingPloc()
+  const deliveries = useMessagingState((s) => s.deliveries)
+  const stats = useMessagingState((s) => s.deliveryStats)
+  const loading = useMessagingState((s) => s.loading)
+
+  useEffect(() => {
+    if (open && message) {
+      ploc.fetchDeliveries(message.id)
+      ploc.fetchDeliveryStats(message.id)
+    }
+  }, [open, message, ploc])
+
+  const deliveryRate = stats && stats.total > 0
+    ? Math.round((stats.delivered / stats.total) * 100)
+    : 0
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="sm:max-w-xl w-full flex flex-col p-0">
+        {!message ? (
+          <>
+            <SheetHeader className="px-6 pt-6 pb-4">
+              <SheetTitle className="sr-only">Campaign Details</SheetTitle>
+              <SheetDescription className="sr-only">Loading campaign</SheetDescription>
+            </SheetHeader>
+            <div className="flex items-center justify-center flex-1 text-muted-foreground">Loading…</div>
+          </>
+        ) : (
+          <>
+            <SheetHeader className="px-6 pt-6 pb-4">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <Badge variant="outline">{typeLabels[message.type]}</Badge>
+                <Badge className={statusColors[message.status]}>{message.status}</Badge>
+              </div>
+              <SheetTitle className="text-lg leading-tight">{message.title}</SheetTitle>
+              <SheetDescription>
+                {targetGroupLabels[message.targetGroup]}
+                {message.sentAt && (
+                  <> · {new Date(message.sentAt).toLocaleString()}</>
+                )}
+              </SheetDescription>
+            </SheetHeader>
+
+            <Separator />
+
+            <ScrollArea className="flex-1 overflow-auto">
+              <div className="px-6 py-4 space-y-5">
+                {/* Message body */}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Message</p>
+                  <p className="text-sm leading-relaxed bg-muted/50 rounded-lg p-3">{message.body}</p>
+                </div>
+
+                <Separator />
+
+                {/* Stats */}
+                {stats ? (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Delivery Summary</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Card className="border shadow-sm">
+                        <CardContent className="p-3">
+                          <p className="text-2xl font-bold">{stats.total}</p>
+                          <p className="text-xs text-muted-foreground">Total</p>
+                        </CardContent>
+                      </Card>
+                      <Card className="border shadow-sm">
+                        <CardContent className="p-3">
+                          <p className="text-2xl font-bold text-green-600">{stats.delivered}</p>
+                          <p className="text-xs text-muted-foreground">Delivered ({deliveryRate}%)</p>
+                        </CardContent>
+                      </Card>
+                      <Card className="border shadow-sm">
+                        <CardContent className="p-3">
+                          <p className="text-2xl font-bold text-blue-600">{stats.sent}</p>
+                          <p className="text-xs text-muted-foreground">Sent (in transit)</p>
+                        </CardContent>
+                      </Card>
+                      <Card className="border shadow-sm">
+                        <CardContent className="p-3">
+                          <p className="text-2xl font-bold text-destructive">{stats.failed}</p>
+                          <p className="text-xs text-muted-foreground">Failed</p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                ) : loading ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {[0,1,2,3].map(i => <Skeleton key={i} className="h-16" />)}
+                  </div>
+                ) : null}
+
+                <Separator />
+
+                {/* Delivery list */}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                    Recipients ({deliveries.length})
+                  </p>
+                  {loading && deliveries.length === 0 ? (
+                    <div className="space-y-2">
+                      {[0,1,2,3].map(i => <Skeleton key={i} className="h-10" />)}
+                    </div>
+                  ) : deliveries.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No delivery records yet.</p>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead className="text-xs">Member</TableHead>
+                            <TableHead className="text-xs">Status</TableHead>
+                            <TableHead className="text-xs">Delivered</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {deliveries.map((d) => (
+                            <TableRow key={d.id}>
+                              <TableCell>
+                                <p className="text-sm font-medium">{d.memberName}</p>
+                                <p className="text-xs text-muted-foreground">{d.phone}</p>
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={`text-xs ${deliveryStatusColors[d.status] ?? "bg-muted"}`}>
+                                  {d.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground">
+                                {d.deliveredAt
+                                  ? new Date(d.deliveredAt).toLocaleString()
+                                  : d.failureReason ?? "—"}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </ScrollArea>
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
+  )
+}
 
 function MessagingPageContent() {
   const searchParams = useSearchParams()
-  const fellowshipSlugParam = searchParams.get("fellowship")
+  const fellowshipIdParam = searchParams.get("fellowshipId")
 
-  const [messageType, setMessageType] = useState<"sms" | "email">("sms")
-  const [selectedRecipients, setSelectedRecipients] = useState<string[]>([])
-  const [message, setMessage] = useState("")
-  const [subject, setSubject] = useState("")
+  const ploc = useMessagingPloc()
+  const fellowshipsPloc = useFellowshipsPloc()
+  const departmentsPloc = useDepartmentsPloc()
+  const zonesPloc = useFellowshipZonesPloc()
 
-  const targetedFellowship = fellowshipSlugParam
-    ? getFellowshipBySlug(fellowshipSlugParam)
-    : undefined
+  const messages = useMessagingState((s) => s.messages)
+  const loading = useMessagingState((s) => s.loading)
+  const submitting = useMessagingState((s) => s.submitting)
+  const sending = useMessagingState((s) => s.sending)
+  const submitError = useMessagingState((s) => s.error)
 
-  const recipientGroups = useMemo(() => {
-    if (!targetedFellowship) return baseRecipientGroups
+  const fellowships = useFellowshipsState((s) => Array.isArray(s.fellowships) ? s.fellowships : [])
+  const departments = useDepartmentsState((s) => Array.isArray(s.departments) ? s.departments : [])
+  const zones = useFellowshipZonesState((s) => Array.isArray(s.fellowshipZones) ? s.fellowshipZones : [])
 
-    return [
-      {
-        id: `fellowship:${fellowshipSlugParam}`,
-        label: targetedFellowship.name,
-        count: targetedFellowship.members,
-      },
-      ...baseRecipientGroups,
-    ]
-  }, [targetedFellowship, fellowshipSlugParam])
+  const [form, setForm] = useState<{
+    title: string
+    body: string
+    type: MessageType
+    targetGroup: MessageTargetGroup
+    targetId: string
+  }>({
+    title: "",
+    body: "",
+    type: "announcement",
+    targetGroup: fellowshipIdParam ? "fellowship" : "all",
+    targetId: fellowshipIdParam ?? "",
+  })
+
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState("compose")
 
   useEffect(() => {
-    if (targetedFellowship && fellowshipSlugParam) {
-      setSelectedRecipients([`fellowship:${fellowshipSlugParam}`])
-    }
-  }, [targetedFellowship, fellowshipSlugParam])
+    fellowshipsPloc.fetchAll()
+    departmentsPloc.fetchAll()
+    zonesPloc.fetchAll()
+  }, [fellowshipsPloc, departmentsPloc, zonesPloc])
 
-  const handleRecipientToggle = (id: string) => {
-    setSelectedRecipients((prev) =>
-      prev.includes(id)
-        ? prev.filter((r) => r !== id)
-        : [...prev, id]
-    )
+  useEffect(() => {
+    if (activeTab === "history") ploc.fetchAll()
+  }, [activeTab, ploc])
+
+  const handleCompose = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const payload: CreateMessageRequest = {
+      title: form.title,
+      body: form.body,
+      type: form.type,
+      targetGroup: form.targetGroup,
+      targetId: form.targetGroup !== "all" && form.targetId ? form.targetId : null,
+    }
+    await ploc.create(payload)
+    const state = useMessagingState.getState()
+    if (!state.error && state.messages[0]) {
+      await ploc.send(state.messages[0].id)
+      if (!useMessagingState.getState().error) {
+        setForm({ title: "", body: "", type: "announcement", targetGroup: "all", targetId: "" })
+        setActiveTab("history")
+        ploc.fetchAll()
+      }
+    }
   }
 
-  const totalRecipients = recipientGroups
-    .filter((g) => selectedRecipients.includes(g.id))
-    .reduce((acc, g) => acc + g.count, 0)
+  const handleViewDetail = (msg: Message) => {
+    setSelectedMessage(msg)
+    setDrawerOpen(true)
+  }
 
-  const totalSent = messageHistory.reduce((acc, m) => acc + m.count, 0)
-  const deliveredMessages = messageHistory.filter((m) => m.status === "delivered").length
+  const useTemplate = (body: string) => {
+    setForm((prev) => ({ ...prev, body }))
+    setActiveTab("compose")
+  }
+
+  const sentMessages = messages.filter((m) => m.status === "sent")
+  const totalDelivered = sentMessages.length
+
+  const needsTargetId = form.targetGroup !== "all"
+  const canSend = form.title.trim().length > 0 && form.body.trim().length > 0 &&
+    (!needsTargetId || form.targetId.length > 0) && !submitting && !sending
 
   return (
     <AppShell>
@@ -177,11 +337,7 @@ function MessagingPageContent() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold">Bulk Messaging</h1>
-            <p className="text-muted-foreground">
-              {targetedFellowship
-                ? `Compose a message for ${targetedFellowship.name}`
-                : "Send SMS and email notifications to congregation members"}
-            </p>
+            <p className="text-muted-foreground">Send SMS notifications to congregation members</p>
           </div>
         </div>
 
@@ -190,29 +346,40 @@ function MessagingPageContent() {
           <Card className="border shadow-sm">
             <CardContent className="p-4 flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                <Send className="h-6 w-6 text-primary" />
+                <MessageSquare className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{totalSent.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground">Messages Sent</p>
+                <p className="text-2xl font-bold">{messages.length}</p>
+                <p className="text-sm text-muted-foreground">Total Campaigns</p>
               </div>
             </CardContent>
           </Card>
           <Card className="border shadow-sm">
             <CardContent className="p-4 flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-success/10">
-                <CheckCircle2 className="h-6 w-6 text-success" />
+                <Send className="h-6 w-6 text-success" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{deliveredMessages}</p>
-                <p className="text-sm text-muted-foreground">Delivered</p>
+                <p className="text-2xl font-bold">{totalDelivered}</p>
+                <p className="text-sm text-muted-foreground">Sent</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border shadow-sm">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
+                <Clock className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{messages.filter(m => m.status === "draft").length}</p>
+                <p className="text-sm text-muted-foreground">Drafts</p>
               </div>
             </CardContent>
           </Card>
           <Card className="border shadow-sm">
             <CardContent className="p-4 flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent/20">
-                <MessageSquare className="h-6 w-6 text-accent" />
+                <BarChart2 className="h-6 w-6 text-accent-foreground" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{templates.length}</p>
@@ -220,290 +387,303 @@ function MessagingPageContent() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border shadow-sm">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-chart-4/20">
-                <Users className="h-6 w-6 text-chart-4" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">96%</p>
-                <p className="text-sm text-muted-foreground">Avg. Delivery Rate</p>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
-        <Tabs defaultValue="compose" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
-            <TabsTrigger value="compose">Compose Message</TabsTrigger>
-            <TabsTrigger value="history">Message History</TabsTrigger>
+            <TabsTrigger value="compose">Compose</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
           </TabsList>
 
-          {/* Compose Tab */}
+          {/* ── Compose Tab ────────────────────────────────────────────────── */}
           <TabsContent value="compose">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Message Form */}
               <div className="lg:col-span-2">
                 <Card className="border shadow-sm">
                   <CardHeader>
-                    <CardTitle>New Message</CardTitle>
-                    <CardDescription>Compose and send a message to your congregation</CardDescription>
+                    <CardTitle>New Campaign</CardTitle>
+                    <CardDescription>Compose and send an SMS to a target group</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Message Type Toggle */}
-                    <div className="flex gap-2">
-                      <Button
-                        variant={messageType === "sms" ? "default" : "outline"}
-                        onClick={() => setMessageType("sms")}
-                        className="gap-2"
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                        SMS
-                      </Button>
-                      <Button
-                        variant={messageType === "email" ? "default" : "outline"}
-                        onClick={() => setMessageType("email")}
-                        className="gap-2"
-                      >
-                        <Mail className="h-4 w-4" />
-                        Email
-                      </Button>
-                    </div>
-
-                    {/* Email Subject (only for email) */}
-                    {messageType === "email" && (
+                  <CardContent>
+                    <form onSubmit={handleCompose} className="space-y-5">
                       <FieldGroup>
                         <Field>
-                          <FieldLabel htmlFor="subject">Subject Line</FieldLabel>
+                          <FieldLabel htmlFor="title">Campaign Title</FieldLabel>
                           <Input
-                            id="subject"
-                            value={subject}
-                            onChange={(e) => setSubject(e.target.value)}
-                            placeholder="Enter email subject..."
+                            id="title"
+                            value={form.title}
+                            onChange={(e) => setForm({ ...form, title: e.target.value })}
+                            placeholder="e.g. Sunday Service Reminder"
+                            required
                           />
                         </Field>
                       </FieldGroup>
-                    )}
 
-                    {/* Template Selection */}
+                      <FieldGroup>
+                        <Field>
+                          <FieldLabel>Message Type</FieldLabel>
+                          <Select
+                            value={form.type}
+                            onValueChange={(v) => setForm({ ...form, type: v as MessageType })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="announcement">Announcement</SelectItem>
+                              <SelectItem value="newsletter">Newsletter</SelectItem>
+                              <SelectItem value="reminder">Reminder</SelectItem>
+                              <SelectItem value="alert">Alert</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                      </FieldGroup>
+
+                      <FieldGroup>
+                        <Field>
+                          <FieldLabel htmlFor="body">Message Body</FieldLabel>
+                          <Textarea
+                            id="body"
+                            value={form.body}
+                            onChange={(e) => setForm({ ...form, body: e.target.value })}
+                            placeholder="Type your message here…"
+                            rows={5}
+                            required
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {form.body.length}/160 chars · {Math.ceil(form.body.length / 160) || 1} SMS part{Math.ceil(form.body.length / 160) !== 1 ? "s" : ""}
+                          </p>
+                        </Field>
+                      </FieldGroup>
+
+                      {submitError && (
+                        <p className="text-sm text-destructive">{submitError}</p>
+                      )}
+
+                      <div className="pt-4 border-t flex items-center justify-end">
+                        <Button type="submit" disabled={!canSend} className="gap-2">
+                          <Send className="h-4 w-4" />
+                          {submitting || sending ? "Sending…" : "Send Campaign"}
+                        </Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Target Group Sidebar */}
+              <div>
+                <Card className="border shadow-sm">
+                  <CardHeader>
+                    <CardTitle>Target Group</CardTitle>
+                    <CardDescription>Who should receive this message?</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <FieldGroup>
                       <Field>
-                        <FieldLabel>Use Template (Optional)</FieldLabel>
-                        <Select>
+                        <FieldLabel>Audience</FieldLabel>
+                        <Select
+                          value={form.targetGroup}
+                          onValueChange={(v) => setForm({ ...form, targetGroup: v as MessageTargetGroup, targetId: "" })}
+                        >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a template" />
+                            <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {templates.map((template) => (
-                              <SelectItem key={template.id} value={template.id}>
-                                {template.name}
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="all">All Members</SelectItem>
+                            <SelectItem value="fellowship">Fellowship</SelectItem>
+                            <SelectItem value="department">Department</SelectItem>
+                            <SelectItem value="zone">Zone</SelectItem>
                           </SelectContent>
                         </Select>
                       </Field>
                     </FieldGroup>
 
-                    {/* Message Content */}
-                    <FieldGroup>
-                      <Field>
-                        <FieldLabel htmlFor="message">Message Content</FieldLabel>
-                        <Textarea
-                          id="message"
-                          value={message}
-                          onChange={(e) => setMessage(e.target.value)}
-                          placeholder="Type your message here..."
-                          rows={6}
-                        />
-                        {messageType === "sms" && (
-                          <p className="text-xs text-muted-foreground mt-2">
-                            {message.length}/160 characters ({Math.ceil(message.length / 160) || 1} SMS)
-                          </p>
-                        )}
-                      </Field>
-                    </FieldGroup>
+                    {form.targetGroup === "fellowship" && (
+                      <FieldGroup>
+                        <Field>
+                          <FieldLabel>Select Fellowship</FieldLabel>
+                          <Select
+                            value={form.targetId}
+                            onValueChange={(v) => setForm({ ...form, targetId: v })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose a fellowship" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {fellowships.map((f) => (
+                                <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                      </FieldGroup>
+                    )}
 
-                    {/* Send Button */}
-                    <div className="flex items-center justify-between pt-4 border-t">
-                      <div className="text-sm text-muted-foreground">
-                        {totalRecipients > 0 ? (
-                          <span>Sending to <span className="font-semibold text-foreground">{totalRecipients.toLocaleString()}</span> recipients</span>
-                        ) : (
-                          <span>Select recipients from the sidebar</span>
-                        )}
-                      </div>
-                      <Button
-                        disabled={totalRecipients === 0 || message.length === 0}
-                        className="gap-2"
-                      >
-                        <Send className="h-4 w-4" />
-                        Send {messageType === "sms" ? "SMS" : "Email"}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                    {form.targetGroup === "department" && (
+                      <FieldGroup>
+                        <Field>
+                          <FieldLabel>Select Department</FieldLabel>
+                          <Select
+                            value={form.targetId}
+                            onValueChange={(v) => setForm({ ...form, targetId: v })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose a department" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {departments.map((d) => (
+                                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                      </FieldGroup>
+                    )}
 
-              {/* Recipients Sidebar */}
-              <div>
-                <Card className="border shadow-sm">
-                  <CardHeader>
-                    <CardTitle>Recipients</CardTitle>
-                    <CardDescription>Select who should receive this message</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {recipientGroups.map((group) => (
-                      <div
-                        key={group.id}
-                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer"
-                        onClick={() => handleRecipientToggle(group.id)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Checkbox
-                            checked={selectedRecipients.includes(group.id)}
-                            onCheckedChange={() => handleRecipientToggle(group.id)}
-                          />
-                          <Label className="cursor-pointer">{group.label}</Label>
-                        </div>
-                        <Badge variant="secondary">{group.count}</Badge>
-                      </div>
-                    ))}
-                    <div className="pt-4 border-t">
-                      <p className="text-sm font-medium">
-                        Total Selected: <span className="text-primary">{totalRecipients.toLocaleString()}</span>
+                    {form.targetGroup === "zone" && (
+                      <FieldGroup>
+                        <Field>
+                          <FieldLabel>Select Zone</FieldLabel>
+                          <Select
+                            value={form.targetId}
+                            onValueChange={(v) => setForm({ ...form, targetId: v })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose a zone" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {zones.map((z) => (
+                                <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                      </FieldGroup>
+                    )}
+
+                    {form.targetGroup !== "all" && !form.targetId && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        Please select a specific {form.targetGroup}
                       </p>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
             </div>
           </TabsContent>
 
-          {/* History Tab */}
+          {/* ── History Tab ────────────────────────────────────────────────── */}
           <TabsContent value="history">
             <Card className="border shadow-sm">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Message History</CardTitle>
-                  <CardDescription>View all sent messages and their delivery status</CardDescription>
-                </div>
-                <div className="relative w-64">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input placeholder="Search messages..." className="pl-9" />
-                </div>
+              <CardHeader>
+                <CardTitle>Campaign History</CardTitle>
+                <CardDescription>All sent and draft campaigns with delivery status</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="font-semibold">Message</TableHead>
-                      <TableHead className="font-semibold">Type</TableHead>
-                      <TableHead className="font-semibold">Recipients</TableHead>
-                      <TableHead className="font-semibold">Sent</TableHead>
-                      <TableHead className="font-semibold">Status</TableHead>
-                      <TableHead className="font-semibold text-right">Delivery Rate</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {messageHistory.map((msg) => {
-                      const StatusIcon = statusIcons[msg.status as keyof typeof statusIcons]
-                      return (
-                        <TableRow key={msg.id}>
+                {loading && messages.length === 0 ? (
+                  <div className="p-4 space-y-3">
+                    {[0,1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
+                  </div>
+                ) : messages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+                    <MessageSquare className="h-10 w-10 opacity-30" />
+                    <p className="text-sm">No campaigns yet. Compose your first one.</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">Campaign</TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">Type</TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">Target</TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">Status</TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">Sent At</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {messages.map((msg) => (
+                        <TableRow key={msg.id} className="cursor-pointer hover:bg-muted/50">
                           <TableCell className="font-medium">{msg.title}</TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="gap-1">
-                              {msg.type === "sms" ? <MessageSquare className="h-3 w-3" /> : <Mail className="h-3 w-3" />}
-                              {msg.type.toUpperCase()}
-                            </Badge>
+                            <Badge variant="outline">{typeLabels[msg.type]}</Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {targetGroupLabels[msg.targetGroup]}
                           </TableCell>
                           <TableCell>
-                            <div>
-                              <p className="text-sm">{msg.recipients}</p>
-                              <p className="text-xs text-muted-foreground">{msg.count.toLocaleString()} recipients</p>
-                            </div>
+                            <Badge className={statusColors[msg.status]}>{msg.status}</Badge>
                           </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {msg.sent}
+                          <TableCell className="text-sm text-muted-foreground">
+                            {msg.sentAt
+                              ? new Date(msg.sentAt).toLocaleString()
+                              : "—"}
                           </TableCell>
                           <TableCell>
-                            <Badge className={`gap-1 ${statusStyles[msg.status as keyof typeof statusStyles]}`}>
-                              <StatusIcon className="h-3 w-3" />
-                              {msg.status.charAt(0).toUpperCase() + msg.status.slice(1)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right font-semibold">
-                            {msg.deliveryRate}%
+                            {msg.status === "sent" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleViewDetail(msg)}
+                              >
+                                <BarChart2 className="h-4 w-4 mr-1.5" />
+                                Report
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Templates Tab */}
+          {/* ── Templates Tab ──────────────────────────────────────────────── */}
           <TabsContent value="templates">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {templates.map((template) => (
-                <Card key={template.id} className="border shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                <Card key={template.id} className="border shadow-sm hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                          <FileText className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-semibold">{template.name}</p>
-                          <Badge variant="secondary" className="text-xs mt-1">
-                            {template.category}
-                          </Badge>
-                        </div>
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                        <FileText className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-semibold">{template.name}</p>
+                        <Badge variant="secondary" className="text-xs mt-1">{template.category}</Badge>
                       </div>
                     </div>
-                    <div className="mt-4 flex gap-2">
-                      <Button variant="outline" size="sm" className="flex-1">Edit</Button>
-                      <Button size="sm" className="flex-1">Use</Button>
-                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2 mb-4">{template.body}</p>
+                    <Button size="sm" className="w-full" onClick={() => useTemplate(template.body)}>
+                      Use Template
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
-              {/* Add New Template Card */}
-              <Card className="border shadow-sm border-dashed hover:border-primary/50 transition-colors cursor-pointer">
-                <CardContent className="p-4 flex flex-col items-center justify-center h-full min-h-[140px]">
+              <Card className="border shadow-sm border-dashed hover:border-primary/50 transition-colors">
+                <CardContent className="p-4 flex flex-col items-center justify-center h-full min-h-[160px] gap-2">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
                     <Plus className="h-5 w-5 text-muted-foreground" />
                   </div>
-                  <p className="mt-2 text-sm text-muted-foreground">Create New Template</p>
+                  <p className="text-sm text-muted-foreground">Create New Template</p>
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
         </Tabs>
       </div>
-    </AppShell>
-  )
-}
 
-function Plus(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M5 12h14" />
-      <path d="M12 5v14" />
-    </svg>
+      <CampaignDetailDrawer
+        message={selectedMessage}
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+      />
+    </AppShell>
   )
 }
 
@@ -512,8 +692,8 @@ export default function MessagingPage() {
     <Suspense
       fallback={
         <AppShell>
-          <div className="p-6">
-            <p className="text-muted-foreground">Loading messaging...</p>
+          <div className="p-6 flex items-center justify-center">
+            <div className="text-muted-foreground">Loading…</div>
           </div>
         </AppShell>
       }

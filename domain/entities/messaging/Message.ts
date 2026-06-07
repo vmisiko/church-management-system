@@ -1,32 +1,39 @@
-export type MessageChannel = 'sms' | 'email'
-export type MessageStatus = 'pending' | 'delivered' | 'failed'
-export type DeliveryStatus = 'pending' | 'delivered' | 'failed'
+export type MessageType = 'announcement' | 'newsletter' | 'reminder' | 'alert'
+export type MessageTargetGroup = 'all' | 'fellowship' | 'department' | 'zone'
+export type MessageStatus = 'draft' | 'sent'
+export type DeliveryStatus = 'pending' | 'sent' | 'delivered' | 'failed'
 
 export interface Message {
   id: string
   title: string
-  channel: MessageChannel
-  subject: string | null
-  content: string
-  sentAt: string | null
-  sentBy: string
+  body: string
+  type: MessageType
+  targetGroup: MessageTargetGroup
+  targetId: string | null
   status: MessageStatus
-  recipientCount: number
-  deliveryRate: number | null
+  scheduledAt: string | null
+  sentAt: string | null
+  createdBy: string
   createdAt: string
+  updatedAt: string
 }
 
 export interface CreateMessageRequest {
   title: string
-  channel: MessageChannel
-  subject?: string
-  content: string
+  body: string
+  type: MessageType
+  targetGroup: MessageTargetGroup
+  targetId?: string | null
+  scheduledAt?: string | null
 }
 
 export interface UpdateMessageRequest {
   title?: string
-  subject?: string
-  content?: string
+  body?: string
+  type?: MessageType
+  targetGroup?: MessageTargetGroup
+  targetId?: string | null
+  scheduledAt?: string | null
 }
 
 export interface MessageDelivery {
@@ -48,7 +55,7 @@ export interface MessageDelivery {
 export interface DeliveryStats {
   total: number
   pending: number
+  sent: number
   delivered: number
   failed: number
-  deliveryRate: number
 }
