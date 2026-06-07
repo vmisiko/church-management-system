@@ -1,17 +1,41 @@
 "use client"
 
+import { useEffect } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
 import { FellowshipDetailsContent } from "@/components/fellowships/fellowship-details-content"
 import { Button } from "@/components/ui/button"
-import { getFellowshipBySlug } from "@/lib/fellowships"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowLeft } from "lucide-react"
+import { useFellowshipsPloc } from "@/core/di/DependencyLocator"
+import useFellowshipsState from "@/application/fellowship/useFellowshipsState"
 
 export default function FellowshipDetailsPage() {
   const params = useParams()
   const slug = params.slug as string
-  const fellowship = getFellowshipBySlug(slug)
+  const ploc = useFellowshipsPloc()
+  const fellowship = useFellowshipsState((s) => s.currentFellowship)
+  const loading = useFellowshipsState((s) => s.loading)
+
+  useEffect(() => {
+    ploc.fetchBySlug(slug)
+  }, [ploc, slug])
+
+  if (loading && !fellowship) {
+    return (
+      <AppShell>
+        <div className="p-6 space-y-4">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-20 w-full" />
+          <div className="grid grid-cols-2 gap-4">
+            <Skeleton className="h-32" />
+            <Skeleton className="h-32" />
+          </div>
+        </div>
+      </AppShell>
+    )
+  }
 
   if (!fellowship) {
     return (

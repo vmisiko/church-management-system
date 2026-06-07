@@ -1,15 +1,13 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { AppShell } from "@/components/app-shell"
-import { FellowshipMembersTable } from "@/components/fellowships/fellowship-members-table"
 import { AddMemberDialog } from "@/components/people/add-member-dialog"
 import { AddFellowshipDialog } from "@/components/fellowships/add-fellowship-dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   Breadcrumb,
@@ -34,48 +32,51 @@ import {
   MapPin,
   MessageSquare,
   MoreVertical,
-  Search,
-  Trash2,
   UserPlus,
   Users,
 } from "lucide-react"
-import {
-  fellowshipSlug,
-  fellowshipZoneColors,
-  type FellowshipRecord,
-} from "@/lib/fellowships"
-import { getMembersByFellowship } from "@/lib/members"
+import type { Fellowship } from "@/domain/entities/fellowship/Fellowship"
+import { fellowshipZoneColors } from "@/lib/fellowships"
+import useFellowshipZonesState from "@/application/fellowship-zone/useFellowshipZonesState"
+import useMembersState from "@/application/member/useMembersState"
+import { useFellowshipZonesPloc, useMembersPloc } from "@/core/di/DependencyLocator"
 
 interface FellowshipDetailsContentProps {
-  fellowship: FellowshipRecord
+  fellowship: Fellowship
 }
 
 export function FellowshipDetailsContent({ fellowship }: FellowshipDetailsContentProps) {
+  const fellowshipZonesPloc = useFellowshipZonesPloc()
+  const membersPloc = useMembersPloc()
+
+  const fellowshipZones = useFellowshipZonesState((s) => Array.isArray(s.fellowshipZones) ? s.fellowshipZones : [])
+  const members = useMembersState((s) => Array.isArray(s.members) ? s.members : [])
+
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
-  const [memberSearch, setMemberSearch] = useState("")
 
-  const slug = fellowshipSlug(fellowship.name)
+  useEffect(() => {
+    fellowshipZonesPloc.fetchAll()
+    membersPloc.fetchAll()
+  }, [fellowshipZonesPloc, membersPloc])
+
+  const zone = fellowshipZones.find((z) => z.id === fellowship.zoneId)
+  const zoneName = zone?.name ?? "—"
+  const zoneColor = fellowshipZoneColors[zoneName] ?? "bg-secondary text-secondary-foreground"
+
+  const leader = fellowship.leaderId ? members.find((m) => m.id === fellowship.leaderId) : null
+  const leaderName = leader
+    ? `${leader.firstName} ${leader.lastName}`
+    : fellowship.leaderId
+    ? "Loading…"
+    : "Not assigned"
+
   const initials = fellowship.name
     .split(" ")
-    .map((word) => word[0])
+    .map((w) => w[0])
     .join("")
     .slice(0, 2)
-
-  const allMembers = getMembersByFellowship(fellowship.name)
-  const filteredMembers = useMemo(() => {
-    const query = memberSearch.toLowerCase()
-    if (!query) return allMembers
-    return allMembers.filter(
-      (member) =>
-        member.name.toLowerCase().includes(query) ||
-        member.email.toLowerCase().includes(query) ||
-        member.phone.includes(query)
-    )
-  }, [allMembers, memberSearch])
-
-  const activeMembers = allMembers.filter((member) => member.activityStatus === "active").length
-  const leaders = allMembers.filter((member) => member.status === "Leader").length
+    .toUpperCase()
 
   return (
     <AppShell>
@@ -112,11 +113,7 @@ export function FellowshipDetailsContent({ fellowship }: FellowshipDetailsConten
               <div>
                 <div className="flex flex-wrap items-center gap-2 mb-1">
                   <h1 className="text-2xl font-bold">{fellowship.name}</h1>
-                  <Badge
-                    className={fellowshipZoneColors[fellowship.zone] || "bg-secondary"}
-                  >
-                    {fellowship.zone}
-                  </Badge>
+                  <Badge className={zoneColor}>{zoneName}</Badge>
                   <Badge
                     variant="outline"
                     className={
@@ -128,13 +125,15 @@ export function FellowshipDetailsContent({ fellowship }: FellowshipDetailsConten
                     {fellowship.status}
                   </Badge>
                 </div>
-                <p className="text-muted-foreground max-w-2xl">{fellowship.description}</p>
+                {fellowship.description && (
+                  <p className="text-muted-foreground max-w-2xl">{fellowship.description}</p>
+                )}
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <Button className="gap-2" asChild>
-                <Link href={`/messaging?fellowship=${slug}`}>
+                <Link href={`/messaging?fellowship=${fellowship.slug}`}>
                   <MessageSquare className="h-4 w-4" />
                   Send Message
                 </Link>
@@ -166,56 +165,14 @@ export function FellowshipDetailsContent({ fellowship }: FellowshipDetailsConten
                       View Attendance
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-destructive">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Deactivate Fellowship
-                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-          <Card className="border shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <Users className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{fellowship.members}</p>
-                  <p className="text-sm text-muted-foreground">Total Members</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
-                  <Users className="h-5 w-5 text-success" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{activeMembers}</p>
-                  <p className="text-sm text-muted-foreground">Active (in records)</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive/10">
-                  <Users className="h-5 w-5 text-destructive" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{leaders}</p>
-                  <p className="text-sm text-muted-foreground">Leaders</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Meeting schedule card */}
+        <div className="mb-6">
           <Card className="border shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -223,8 +180,8 @@ export function FellowshipDetailsContent({ fellowship }: FellowshipDetailsConten
                   <Clock className="h-5 w-5 text-accent-foreground" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-sm">{fellowship.meetingDay}s</p>
-                  <p className="text-sm text-muted-foreground">{fellowship.meetingTime}</p>
+                  <p className="font-semibold capitalize">{fellowship.meetingDay}s at {fellowship.meetingTime}</p>
+                  <p className="text-sm text-muted-foreground">{fellowship.location}</p>
                 </div>
               </div>
             </CardContent>
@@ -234,7 +191,7 @@ export function FellowshipDetailsContent({ fellowship }: FellowshipDetailsConten
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="members">Members ({allMembers.length})</TabsTrigger>
+            <TabsTrigger value="members">Members</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -246,11 +203,11 @@ export function FellowshipDetailsContent({ fellowship }: FellowshipDetailsConten
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Leader</p>
-                    <p className="font-medium">{fellowship.leader}</p>
+                    <p className="font-medium">{leaderName}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Zone</p>
-                    <p className="font-medium">{fellowship.zone}</p>
+                    <p className="font-medium">{zoneName}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Status</p>
@@ -268,7 +225,7 @@ export function FellowshipDetailsContent({ fellowship }: FellowshipDetailsConten
                     <Clock className="h-4 w-4 mt-0.5 text-muted-foreground" />
                     <div>
                       <p className="text-sm text-muted-foreground">Schedule</p>
-                      <p className="font-medium">
+                      <p className="font-medium capitalize">
                         {fellowship.meetingDay}s at {fellowship.meetingTime}
                       </p>
                     </div>
@@ -284,27 +241,38 @@ export function FellowshipDetailsContent({ fellowship }: FellowshipDetailsConten
               </Card>
             </div>
 
-            <Card className="border shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-base">About This Fellowship</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground leading-relaxed">{fellowship.description}</p>
-              </CardContent>
-            </Card>
+            {fellowship.description && (
+              <Card className="border shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-base">About This Fellowship</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground leading-relaxed">{fellowship.description}</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
-          <TabsContent value="members" className="space-y-4">
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search members..."
-                value={memberSearch}
-                onChange={(e) => setMemberSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <FellowshipMembersTable members={filteredMembers} totalCount={fellowship.members} />
+          <TabsContent value="members">
+            <Card className="border shadow-sm">
+              <CardContent className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+                  <Users className="h-7 w-7 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold text-lg mb-1">Fellowship members</p>
+                  <p className="text-sm text-muted-foreground max-w-sm">
+                    Members are managed in the People section, pre-filtered to this fellowship.
+                  </p>
+                </div>
+                <Button asChild>
+                  <Link href={`/people?fellowshipId=${fellowship.id}`}>
+                    <Users className="h-4 w-4 mr-2" />
+                    Open in People
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
