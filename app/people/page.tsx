@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
 import { PeopleFilters } from "@/components/people/people-filters"
 import { PeopleTable } from "@/components/people/people-table"
@@ -10,9 +11,24 @@ import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { defaultPeopleFilters, type PeopleFilterState } from "@/lib/people-filters"
 
-export default function PeoplePage() {
+function PeoplePageContent() {
+  const searchParams = useSearchParams()
+
+  const getInitialFilters = (): PeopleFilterState => {
+    const fellowshipId = searchParams.get("fellowshipId")
+    const departmentId = searchParams.get("departmentId")
+
+    if (fellowshipId) {
+      return { ...defaultPeopleFilters, fellowship: fellowshipId, inFellowship: true }
+    }
+    if (departmentId) {
+      return { ...defaultPeopleFilters, department: departmentId }
+    }
+    return defaultPeopleFilters
+  }
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [filters, setFilters] = useState<PeopleFilterState>(defaultPeopleFilters)
+  const [filters, setFilters] = useState<PeopleFilterState>(getInitialFilters)
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
 
@@ -57,5 +73,21 @@ export default function PeoplePage() {
         />
       </div>
     </AppShell>
+  )
+}
+
+export default function PeoplePage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell>
+          <div className="p-6 flex items-center justify-center">
+            <div className="text-muted-foreground">Loading…</div>
+          </div>
+        </AppShell>
+      }
+    >
+      <PeoplePageContent />
+    </Suspense>
   )
 }
