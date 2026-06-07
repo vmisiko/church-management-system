@@ -31,7 +31,7 @@ export class MemberRepository extends BaseRepository implements IMemberRepositor
       if (params?.departmentId) query.departmentId = params.departmentId
       if (params?.memberType) query.memberType = params.memberType
       if (params?.activityStatus) query.activityStatus = params.activityStatus
-      if (params?.joinedAfter) query.joinedAfter = params.joinedAfter
+      if (params?.joinDateRange) query.joinDateRange = params.joinDateRange
       const { data } = await this.axios.get<MembersListResponse>('/api/members', { params: query })
       return Either.right((data as unknown as MembersListResponse).data)
     } catch (error) {

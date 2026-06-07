@@ -85,10 +85,7 @@ export function toMemberQueryParams(filters: PeopleFilterState): MemberQueryPara
   }
 
   if (filters.joinDateRange !== "all") {
-    const day = 86_400_000
-    const daysMap: Record<string, number> = { week: 7, month: 30, recently: 14 }
-    const days = daysMap[filters.joinDateRange] ?? 14
-    params.joinedAfter = new Date(Date.now() - days * day).toISOString()
+    params.joinDateRange = filters.joinDateRange as 'recently' | 'week' | 'month'
   }
 
   return params

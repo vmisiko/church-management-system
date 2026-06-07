@@ -53,5 +53,5 @@ export interface MemberQueryParams {
   departmentId?: string
   memberType?: MemberType
   activityStatus?: ActivityStatus
-  joinedAfter?: string
+  joinDateRange?: 'recently' | 'week' | 'month'
 }
