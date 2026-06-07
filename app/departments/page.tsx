@@ -31,8 +31,6 @@ import useDepartmentsState from "@/application/department/useDepartmentsState"
 import useMembersState from "@/application/member/useMembersState"
 import type { Department } from "@/domain/entities/department/Department"
 
-const fmt = new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 0 })
-
 const CARD_COLORS = [
   "bg-primary", "bg-accent", "bg-chart-3", "bg-chart-4",
   "bg-chart-5", "bg-success", "bg-primary", "bg-accent",
@@ -56,9 +54,6 @@ export default function DepartmentsPage() {
   }, [ploc, membersPloc])
 
   const memberMap = Object.fromEntries(members.map((m) => [m.id, `${m.firstName} ${m.lastName}`]))
-
-  const totalBudget = departments.reduce((acc, d) => acc + (d.annualBudget ?? 0), 0)
-  const totalSpent = departments.reduce((acc, d) => acc + (d.budgetSpent ?? 0), 0)
 
   const handleDelete = async () => {
     if (!deletingDept) return
@@ -96,7 +91,7 @@ export default function DepartmentsPage() {
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <Card className="border shadow-sm">
             <CardContent className="p-4">
               <p className="text-2xl font-bold text-primary">{departments.length}</p>
@@ -109,20 +104,6 @@ export default function DepartmentsPage() {
                 {departments.reduce((acc, d) => acc + (d.memberTarget ?? 0), 0)}
               </p>
               <p className="text-sm text-muted-foreground">Total Member Target</p>
-            </CardContent>
-          </Card>
-          <Card className="border shadow-sm">
-            <CardContent className="p-4">
-              <p className="text-2xl font-bold text-success">{totalBudget > 0 ? fmt.format(totalBudget) : "—"}</p>
-              <p className="text-sm text-muted-foreground">Total Budget</p>
-            </CardContent>
-          </Card>
-          <Card className="border shadow-sm">
-            <CardContent className="p-4">
-              <p className="text-2xl font-bold">
-                {totalBudget > 0 ? `${Math.round((totalSpent / totalBudget) * 100)}%` : "—"}
-              </p>
-              <p className="text-sm text-muted-foreground">Budget Utilized</p>
             </CardContent>
           </Card>
         </div>
@@ -139,9 +120,6 @@ export default function DepartmentsPage() {
               const color = CARD_COLORS[idx % CARD_COLORS.length]
               const memberProgress = dept.memberTarget
                 ? Math.min(100, Math.round(((dept.memberTarget ?? 0) / dept.memberTarget) * 100))
-                : 0
-              const budgetProgress = dept.annualBudget
-                ? Math.min(100, Math.round(((dept.budgetSpent ?? 0) / dept.annualBudget) * 100))
                 : 0
               const headName = dept.headId ? memberMap[dept.headId] : null
 
@@ -192,16 +170,6 @@ export default function DepartmentsPage() {
                           <span className="font-medium">{dept.memberTarget}</span>
                         </div>
                         <Progress value={memberProgress} className="h-1.5" />
-                      </div>
-                    ) : null}
-
-                    {dept.annualBudget ? (
-                      <div>
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-muted-foreground">Budget Used</span>
-                          <span className="font-medium">{budgetProgress}%</span>
-                        </div>
-                        <Progress value={budgetProgress} className="h-1.5" />
                       </div>
                     ) : null}
 

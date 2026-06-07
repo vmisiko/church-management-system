@@ -44,7 +44,6 @@ const emptyForm = {
   description: "",
   headId: "",
   memberTarget: "",
-  annualBudget: "",
 }
 
 export function AddDepartmentDialog({ open, onOpenChange, department }: AddDepartmentDialogProps) {
@@ -72,7 +71,6 @@ export function AddDepartmentDialog({ open, onOpenChange, department }: AddDepar
               description: department.description ?? "",
               headId: department.headId ?? "",
               memberTarget: department.memberTarget ? String(department.memberTarget) : "",
-              annualBudget: department.annualBudget ? String(department.annualBudget) : "",
             }
           : emptyForm,
       )
@@ -91,7 +89,6 @@ export function AddDepartmentDialog({ open, onOpenChange, department }: AddDepar
       description: form.description || undefined,
       headId: form.headId || undefined,
       memberTarget: form.memberTarget ? Number(form.memberTarget) : undefined,
-      annualBudget: form.annualBudget ? Number(form.annualBudget) : undefined,
     }
     const ok = isEditing && department
       ? await ploc.update(department.id, payload)
@@ -186,34 +183,19 @@ export function AddDepartmentDialog({ open, onOpenChange, department }: AddDepar
               </Field>
             </FieldGroup>
 
-            <div className="grid grid-cols-2 gap-4">
-              <FieldGroup>
-                <Field>
-                  <FieldLabel htmlFor="member-target">Member Target</FieldLabel>
-                  <Input
-                    id="member-target"
-                    type="number"
-                    min={0}
-                    value={form.memberTarget}
-                    onChange={(e) => setForm({ ...form, memberTarget: e.target.value })}
-                    placeholder="50"
-                  />
-                </Field>
-              </FieldGroup>
-              <FieldGroup>
-                <Field>
-                  <FieldLabel htmlFor="annual-budget">Annual Budget (KES)</FieldLabel>
-                  <Input
-                    id="annual-budget"
-                    type="number"
-                    min={0}
-                    value={form.annualBudget}
-                    onChange={(e) => setForm({ ...form, annualBudget: e.target.value })}
-                    placeholder="250000"
-                  />
-                </Field>
-              </FieldGroup>
-            </div>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="member-target">Member Target</FieldLabel>
+                <Input
+                  id="member-target"
+                  type="number"
+                  min={0}
+                  value={form.memberTarget}
+                  onChange={(e) => setForm({ ...form, memberTarget: e.target.value })}
+                  placeholder="50"
+                />
+              </Field>
+            </FieldGroup>
 
             <FieldGroup>
               <Field>
