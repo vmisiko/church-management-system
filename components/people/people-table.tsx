@@ -28,9 +28,10 @@ const statusColors: Record<string, string> = {
 
 interface PeopleTableProps {
   filters: PeopleFilterState
+  onMemberClick?: (memberId: string) => void
 }
 
-export function PeopleTable({ filters }: PeopleTableProps) {
+export function PeopleTable({ filters, onMemberClick }: PeopleTableProps) {
   const ploc = useMembersPloc()
   const members = useMembersState((s) => Array.isArray(s.members) ? s.members : [])
   const loading = useMembersState((s) => s.loading)
@@ -99,7 +100,11 @@ export function PeopleTable({ filters }: PeopleTableProps) {
                 const name = `${member.firstName} ${member.lastName}`
                 const initials = `${member.firstName[0] ?? ""}${member.lastName[0] ?? ""}`
                 return (
-                  <TableRow key={member.id} className="cursor-pointer hover:bg-muted/50">
+                  <TableRow
+                    key={member.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => onMemberClick?.(member.id)}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10">

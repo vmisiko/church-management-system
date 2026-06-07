@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app-shell"
 import { PeopleFilters } from "@/components/people/people-filters"
 import { PeopleTable } from "@/components/people/people-table"
 import { AddMemberDialog } from "@/components/people/add-member-dialog"
+import { MemberDetailDrawer } from "@/components/people/member-detail-drawer"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { defaultPeopleFilters, type PeopleFilterState } from "@/lib/people-filters"
@@ -12,6 +13,13 @@ import { defaultPeopleFilters, type PeopleFilterState } from "@/lib/people-filte
 export default function PeoplePage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [filters, setFilters] = useState<PeopleFilterState>(defaultPeopleFilters)
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+
+  const handleMemberClick = (memberId: string) => {
+    setSelectedMemberId(memberId)
+    setIsDrawerOpen(true)
+  }
 
   return (
     <AppShell>
@@ -34,12 +42,19 @@ export default function PeoplePage() {
 
           {/* Table */}
           <div className="flex-1 min-w-0">
-            <PeopleTable filters={filters} />
+            <PeopleTable filters={filters} onMemberClick={handleMemberClick} />
           </div>
         </div>
 
         {/* Add Member Dialog */}
         <AddMemberDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} />
+
+        {/* Member Detail Drawer */}
+        <MemberDetailDrawer
+          memberId={selectedMemberId}
+          open={isDrawerOpen}
+          onOpenChange={setIsDrawerOpen}
+        />
       </div>
     </AppShell>
   )
