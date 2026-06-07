@@ -139,6 +139,12 @@ export function FellowshipDetailsContent({ fellowship }: FellowshipDetailsConten
                   Send Message
                 </Link>
               </Button>
+              <Button variant="outline" className="gap-2" asChild>
+                <Link href={`/people?fellowshipId=${fellowship.id}`}>
+                  <Users className="h-4 w-4" />
+                  View Members
+                </Link>
+              </Button>
               <Button variant="outline" className="gap-2" onClick={() => setIsAddMemberOpen(true)}>
                 <UserPlus className="h-4 w-4" />
                 Add Member
@@ -154,9 +160,11 @@ export function FellowshipDetailsContent({ fellowship }: FellowshipDetailsConten
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
-                    <Calendar className="h-4 w-4 mr-2" />
-                    View Attendance
+                  <DropdownMenuItem asChild>
+                    <Link href={`/attendance?fellowshipId=${fellowship.id}`}>
+                      <Calendar className="h-4 w-4 mr-2" />
+                      View Attendance
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem className="text-destructive">
                     <Trash2 className="h-4 w-4 mr-2" />
@@ -303,6 +311,7 @@ export function FellowshipDetailsContent({ fellowship }: FellowshipDetailsConten
         <AddMemberDialog
           open={isAddMemberOpen}
           onOpenChange={setIsAddMemberOpen}
+          defaultFellowshipId={fellowship.id}
         />
         <AddFellowshipDialog
           open={isEditOpen}

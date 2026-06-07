@@ -13,6 +13,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Plus, Search, LayoutGrid, List, MapPin } from "lucide-react"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import useFellowshipsState from "@/application/fellowship/useFellowshipsState"
@@ -31,6 +41,7 @@ export default function FellowshipsPage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isAddZoneDialogOpen, setIsAddZoneDialogOpen] = useState(false)
   const [editingFellowship, setEditingFellowship] = useState<Fellowship | null>(null)
+  const [deletingFellowship, setDeletingFellowship] = useState<Fellowship | null>(null)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [zoneFilter, setZoneFilter] = useState("all")
@@ -50,6 +61,12 @@ export default function FellowshipsPage() {
   })
 
   const zones = fellowshipZones
+
+  async function handleDeleteFellowship() {
+    if (!deletingFellowship) return
+    await fellowshipsPloc.delete(deletingFellowship.id)
+    setDeletingFellowship(null)
+  }
 
   return (
     <AppShell>
@@ -145,6 +162,7 @@ export default function FellowshipsPage() {
                 zoneName={zoneNameMap[fellowship.zoneId] ?? "Unknown Zone"}
                 viewMode={viewMode}
                 onEdit={setEditingFellowship}
+                onDelete={setDeletingFellowship}
               />
             ))}
           </div>
@@ -159,6 +177,31 @@ export default function FellowshipsPage() {
           />
         )}
         <AddZoneDialog open={isAddZoneDialogOpen} onOpenChange={setIsAddZoneDialogOpen} />
+
+        <AlertDialog
+          open={!!deletingFellowship}
+          onOpenChange={(open) => !open && setDeletingFellowship(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Fellowship</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete{" "}
+                <span className="font-semibold">{deletingFellowship?.name}</span>? This action
+                cannot be undone and will remove all associated data.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={handleDeleteFellowship}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AppShell>
   )
