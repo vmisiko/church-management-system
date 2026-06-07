@@ -19,10 +19,12 @@ interface FellowshipCardProps {
   zoneName: string
   viewMode: "grid" | "list"
   onEdit?: (fellowship: Fellowship) => void
+  onDelete?: (fellowship: Fellowship) => void
 }
 
-export function FellowshipCard({ fellowship, zoneName, viewMode, onEdit }: FellowshipCardProps) {
+export function FellowshipCard({ fellowship, zoneName, viewMode, onEdit, onDelete }: FellowshipCardProps) {
   const detailsHref = `/fellowships/${fellowship.slug}`
+  const membersHref = `/people?fellowshipId=${fellowship.id}`
 
   const initials = fellowship.name
     .split(" ")
@@ -56,6 +58,12 @@ export function FellowshipCard({ fellowship, zoneName, viewMode, onEdit }: Fello
                 <Clock className="h-4 w-4" />
                 <span>{fellowship.meetingDay}s at {fellowship.meetingTime}</span>
               </div>
+              <Button asChild variant="outline" size="sm">
+                <Link href={membersHref}>
+                  <Users className="h-4 w-4 mr-2" />
+                  Members
+                </Link>
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon">
@@ -73,7 +81,7 @@ export function FellowshipCard({ fellowship, zoneName, viewMode, onEdit }: Fello
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-destructive">
+                  <DropdownMenuItem className="text-destructive" onClick={() => onDelete?.(fellowship)}>
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete
                   </DropdownMenuItem>
@@ -120,7 +128,7 @@ export function FellowshipCard({ fellowship, zoneName, viewMode, onEdit }: Fello
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem className="text-destructive" onClick={() => onDelete?.(fellowship)}>
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete
               </DropdownMenuItem>
@@ -142,6 +150,14 @@ export function FellowshipCard({ fellowship, zoneName, viewMode, onEdit }: Fello
             <Users className="h-4 w-4" />
             <span className="capitalize">{fellowship.status}</span>
           </div>
+        </div>
+        <div className="mt-4">
+          <Button asChild variant="outline" size="sm" className="w-full">
+            <Link href={membersHref}>
+              <Users className="h-4 w-4 mr-2" />
+              Members
+            </Link>
+          </Button>
         </div>
       </CardContent>
     </Card>
