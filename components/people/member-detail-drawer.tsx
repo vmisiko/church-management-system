@@ -74,6 +74,7 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
     memberType: "adult" as MemberType,
     activityStatus: "active" as ActivityStatus,
     fellowshipId: "",
+    departmentId: "",
   })
 
   useEffect(() => {
@@ -89,7 +90,8 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
 
   useEffect(() => {
     if (member && member.id === memberId) {
-      setFormData({
+      setFormData((prev) => ({
+        ...prev,
         firstName: member.firstName,
         lastName: member.lastName,
         email: member.email ?? "",
@@ -98,13 +100,21 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
         memberType: member.memberType,
         activityStatus: member.activityStatus,
         fellowshipId: member.fellowshipId ?? "",
-      })
+      }))
     }
   }, [member, memberId])
+
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      departmentId: memberDepartments[0]?.id ?? "",
+    }))
+  }, [memberDepartments])
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!memberId) return
+
     await membersPloc.update(memberId, {
       firstName: formData.firstName,
       lastName: formData.lastName,
@@ -115,8 +125,16 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
       activityStatus: formData.activityStatus,
       fellowshipId: formData.fellowshipId || null,
     })
-    const error = useMembersState.getState().error
-    if (!error) setEditing(false)
+    if (useMembersState.getState().error) return
+
+    const currentDeptId = memberDepartments[0]?.id ?? ""
+    const newDeptId = formData.departmentId
+    if (currentDeptId !== newDeptId) {
+      if (currentDeptId) await membersPloc.removeDepartment(memberId, currentDeptId)
+      if (newDeptId) await membersPloc.assignDepartment(memberId, newDeptId)
+    }
+
+    if (!useMembersState.getState().error) setEditing(false)
   }
 
   const handleDelete = async () => {
@@ -298,6 +316,26 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
                           <SelectItem value="none">None</SelectItem>
                           {fellowships.map((f) => (
                             <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  </FieldGroup>
+
+                  <FieldGroup>
+                    <Field>
+                      <FieldLabel>Department</FieldLabel>
+                      <Select
+                        value={formData.departmentId || "none"}
+                        onValueChange={(v) => setFormData({ ...formData, departmentId: v === "none" ? "" : v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {departments.map((d) => (
+                            <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
