@@ -45,3 +45,13 @@ export interface MemberDepartment {
   id: string
   name: string
 }
+
+export interface MemberQueryParams {
+  status?: MemberStatus
+  hasFellowship?: boolean
+  fellowshipId?: string
+  departmentId?: string
+  memberType?: MemberType
+  activityStatus?: ActivityStatus
+  joinedAfter?: string
+}

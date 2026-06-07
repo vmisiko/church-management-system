@@ -1,4 +1,5 @@
 import { fellowshipFilterOptions } from "@/lib/fellowships"
+import type { MemberQueryParams, MemberStatus, ActivityStatus, MemberType } from "@/domain/entities/member/Member"
 
 export interface PeopleFilterState {
   status: string
@@ -71,4 +72,33 @@ export function countActiveFilters(filters: PeopleFilterState): number {
 
 export function hasActiveFilters(filters: PeopleFilterState): boolean {
   return countActiveFilters(filters) > 0
+}
+
+export function toMemberQueryParams(filters: PeopleFilterState): MemberQueryParams {
+  const params: MemberQueryParams = {}
+
+  if (filters.status !== "all") params.status = filters.status as MemberStatus
+  if (filters.activityStatus !== "all") params.activityStatus = filters.activityStatus as ActivityStatus
+
+  if (filters.inFellowship === false) {
+    params.hasFellowship = false
+  } else if (filters.fellowship !== "all") {
+    params.fellowshipId = filters.fellowship
+  } else if (filters.inFellowship === true) {
+    params.hasFellowship = true
+  }
+
+  if (filters.department !== "all") params.departmentId = filters.department
+
+  if (filters.memberType.length === 1) {
+    params.memberType = filters.memberType[0] as MemberType
+  }
+
+  if (filters.joinDateRange !== "all") {
+    const day = 86_400_000
+    const days = filters.joinDateRange === "week" ? 7 : filters.joinDateRange === "month" ? 30 : 14
+    params.joinedAfter = new Date(Date.now() - days * day).toISOString()
+  }
+
+  return params
 }

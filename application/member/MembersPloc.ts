@@ -9,7 +9,7 @@ import type { DeleteMemberUseCase } from '@/domain/usecases/member/DeleteMemberU
 import type { GetMemberDepartmentsUseCase } from '@/domain/usecases/member/GetMemberDepartmentsUseCase'
 import type { AssignMemberDepartmentUseCase } from '@/domain/usecases/member/AssignMemberDepartmentUseCase'
 import type { RemoveMemberDepartmentUseCase } from '@/domain/usecases/member/RemoveMemberDepartmentUseCase'
-import type { CreateMemberRequest, UpdateMemberRequest } from '@/domain/entities/member/Member'
+import type { CreateMemberRequest, UpdateMemberRequest, MemberQueryParams } from '@/domain/entities/member/Member'
 
 export class MembersPloc extends Ploc<StoreApi<MembersState>> {
   private readonly getMembersUseCase: GetMembersUseCase
@@ -53,9 +53,9 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
     this.removeMemberDepartmentUseCase = removeMemberDepartmentUseCase
   }
 
-  async fetchAll(): Promise<void> {
+  async fetchAll(params?: MemberQueryParams): Promise<void> {
     this.store.setState({ loading: true, error: null })
-    const result = await this.getMembersUseCase.execute()
+    const result = await this.getMembersUseCase.execute(params)
     result.fold(
       (error) => this.store.setState({ loading: false, error: this.handleError(error) }),
       (members) => this.store.setState({ loading: false, members }),

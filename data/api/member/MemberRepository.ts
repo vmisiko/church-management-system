@@ -9,6 +9,7 @@ import type {
   CreateMemberRequest,
   UpdateMemberRequest,
   MemberDepartment,
+  MemberQueryParams,
 } from '@/domain/entities/member/Member'
 
 interface MembersListResponse {
@@ -21,10 +22,18 @@ export class MemberRepository extends BaseRepository implements IMemberRepositor
     super({ axios })
   }
 
-  async getAll(): Promise<Either<DataError, Member[]>> {
+  async getAll(params?: MemberQueryParams): Promise<Either<DataError, Member[]>> {
     try {
-      const { data } = await this.axios.get<MembersListResponse>('/api/members')
-      return Either.right((data as MembersListResponse).data)
+      const query: Record<string, string> = {}
+      if (params?.status) query.status = params.status
+      if (params?.hasFellowship !== undefined) query.hasFellowship = String(params.hasFellowship)
+      if (params?.fellowshipId) query.fellowshipId = params.fellowshipId
+      if (params?.departmentId) query.departmentId = params.departmentId
+      if (params?.memberType) query.memberType = params.memberType
+      if (params?.activityStatus) query.activityStatus = params.activityStatus
+      if (params?.joinedAfter) query.joinedAfter = params.joinedAfter
+      const { data } = await this.axios.get<MembersListResponse>('/api/members', { params: query })
+      return Either.right((data as unknown as MembersListResponse).data)
     } catch (error) {
       return Either.left(mapToDataError(error))
     }

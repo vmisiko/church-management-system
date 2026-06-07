@@ -15,10 +15,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import type { PeopleFilterState } from "@/lib/people-filters"
+import { toMemberQueryParams, type PeopleFilterState } from "@/lib/people-filters"
 import useMembersState from "@/application/member/useMembersState"
 import { useMembersPloc } from "@/core/di/DependencyLocator"
-import type { Member } from "@/domain/entities/member/Member"
 
 const statusColors: Record<string, string> = {
   guest: "bg-muted text-muted-foreground",
@@ -39,29 +38,12 @@ export function PeopleTable({ filters, onMemberClick }: PeopleTableProps) {
   const itemsPerPage = 10
 
   useEffect(() => {
-    ploc.fetchAll()
-  }, [ploc])
+    setCurrentPage(1)
+    ploc.fetchAll(toMemberQueryParams(filters))
+  }, [ploc, filters])
 
-  const filteredMembers = members.filter((member: Member) => {
-    if (filters.status !== "all" && member.status !== filters.status) return false
-    if (filters.activityStatus !== "all" && member.activityStatus !== filters.activityStatus) return false
-    if (filters.memberType.length > 0 && !filters.memberType.includes(member.memberType)) return false
-    if (filters.inFellowship === true && !member.fellowshipId) return false
-    if (filters.inFellowship === false && member.fellowshipId) return false
-    if (filters.fellowship !== "all" && member.fellowshipId !== filters.fellowship) return false
-    if (filters.joinDateRange !== "all") {
-      const joined = new Date(member.joinedAt).getTime()
-      const now = Date.now()
-      const day = 86_400_000
-      if (filters.joinDateRange === "week" && now - joined > 7 * day) return false
-      if (filters.joinDateRange === "month" && now - joined > 30 * day) return false
-      if (filters.joinDateRange === "recently" && now - joined > 14 * day) return false
-    }
-    return true
-  })
-
-  const totalPages = Math.max(1, Math.ceil(filteredMembers.length / itemsPerPage))
-  const paginated = filteredMembers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const totalPages = Math.max(1, Math.ceil(members.length / itemsPerPage))
+  const paginated = members.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   if (loading && members.length === 0) {
     return (
@@ -134,7 +116,6 @@ export function PeopleTable({ filters, onMemberClick }: PeopleTableProps) {
       <CardFooter className="flex items-center justify-between border-t px-6 py-4">
         <p className="text-sm text-muted-foreground">
           Showing{" "}
-          <span className="font-semibold text-primary">{filteredMembers.length}</span> of{" "}
           <span className="font-semibold text-primary">{members.length.toLocaleString()}</span>{" "}
           Souls
         </p>
