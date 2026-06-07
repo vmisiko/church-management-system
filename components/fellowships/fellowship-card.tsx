@@ -47,7 +47,7 @@ export function FellowshipCard({ fellowship, zoneName, viewMode, onEdit, onDelet
                 <Link href={detailsHref} className="font-semibold hover:text-primary transition-colors">
                   {fellowship.name}
                 </Link>
-                <p className="text-sm text-muted-foreground">{fellowship.leader}</p>
+                <p className="text-sm text-muted-foreground">{fellowship.memberCount} members</p>
               </div>
             </div>
             <div className="flex items-center gap-6">
@@ -148,7 +148,7 @@ export function FellowshipCard({ fellowship, zoneName, viewMode, onEdit, onDelet
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Users className="h-4 w-4" />
-            <span className="capitalize">{fellowship.status}</span>
+            <span>{fellowship.memberCount} members</span>
           </div>
         </div>
         <div className="mt-4">

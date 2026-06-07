@@ -9,6 +9,7 @@ export interface Fellowship {
   location: string
   status: 'active' | 'inactive'
   description: string | null
+  memberCount: number
   createdAt: string
   updatedAt: string
 }

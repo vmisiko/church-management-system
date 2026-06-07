@@ -171,8 +171,21 @@ export function FellowshipDetailsContent({ fellowship }: FellowshipDetailsConten
           </div>
         </div>
 
-        {/* Meeting schedule card */}
-        <div className="mb-6">
+        {/* Stat cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <Card className="border shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <Users className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{fellowship.memberCount}</p>
+                  <p className="text-sm text-muted-foreground">Active Members</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
           <Card className="border shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">

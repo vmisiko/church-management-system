@@ -101,9 +101,9 @@ export default function DepartmentsPage() {
           <Card className="border shadow-sm">
             <CardContent className="p-4">
               <p className="text-2xl font-bold text-accent-foreground">
-                {departments.reduce((acc, d) => acc + (d.memberTarget ?? 0), 0)}
+                {departments.reduce((acc, d) => acc + (d.memberCount ?? 0), 0)}
               </p>
-              <p className="text-sm text-muted-foreground">Total Member Target</p>
+              <p className="text-sm text-muted-foreground">Total Members Assigned</p>
             </CardContent>
           </Card>
         </div>
@@ -160,7 +160,13 @@ export default function DepartmentsPage() {
                       <p className="text-xs text-muted-foreground line-clamp-2">{dept.description}</p>
                     )}
 
-                    <p className="text-xs text-muted-foreground">Target: {dept.memberTarget ?? "—"} members</p>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Members</span>
+                      <span className="font-semibold">
+                        {dept.memberCount}
+                        {dept.memberTarget ? ` / ${dept.memberTarget}` : ""}
+                      </span>
+                    </div>
 
                     <div className="flex items-center gap-2 pt-2 border-t">
                       <Avatar className="h-6 w-6 shrink-0">

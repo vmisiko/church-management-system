@@ -4,6 +4,7 @@ export interface Department {
   headId: string | null
   memberTarget: number
   description: string | null
+  memberCount: number
   createdAt: string
   updatedAt: string
 }
