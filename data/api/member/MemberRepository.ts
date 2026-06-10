@@ -6,6 +6,7 @@ import type CustomAxios from '@/core/utility/CustomAxios'
 import type { IMemberRepository } from '@/domain/repository/IMemberRepository'
 import type {
   Member,
+  MembersPage,
   CreateMemberRequest,
   UpdateMemberRequest,
   MemberDepartment,
@@ -25,7 +26,7 @@ export class MemberRepository extends BaseRepository implements IMemberRepositor
     super({ axios })
   }
 
-  async getAll(params?: MemberQueryParams): Promise<Either<DataError, Member[]>> {
+  async getAll(params?: MemberQueryParams): Promise<Either<DataError, MembersPage>> {
     try {
       const query: Record<string, string> = {}
       if (params?.status) query.status = params.status
@@ -35,8 +36,12 @@ export class MemberRepository extends BaseRepository implements IMemberRepositor
       if (params?.memberType) query.memberType = params.memberType
       if (params?.activityStatus) query.activityStatus = params.activityStatus
       if (params?.joinDateRange) query.joinDateRange = params.joinDateRange
+      if (params?.search) query.search = params.search
+      if (params?.page) query.page = String(params.page)
+      if (params?.limit) query.limit = String(params.limit)
       const { data } = await this.axios.get<MembersListResponse>('/api/members', { params: query })
-      return Either.right((data as unknown as MembersListResponse).data)
+      const response = data as unknown as MembersListResponse
+      return Either.right({ data: response.data, total: response.total })
     } catch (error) {
       return Either.left(mapToDataError(error))
     }

@@ -14,6 +14,7 @@ import type { BulkImportMembersUseCase } from '@/domain/usecases/member/BulkImpo
 import type { PreviewBulkImportUseCase } from '@/domain/usecases/member/PreviewBulkImportUseCase'
 
 export class MembersPloc extends Ploc<StoreApi<MembersState>> {
+  private lastFilterParams: Omit<MemberQueryParams, 'page' | 'limit'> | undefined
   private readonly getMembersUseCase: GetMembersUseCase
   private readonly getMemberByIdUseCase: GetMemberByIdUseCase
   private readonly createMemberUseCase: CreateMemberUseCase
@@ -64,11 +65,13 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
   }
 
   async fetchAll(params?: MemberQueryParams): Promise<void> {
+    const { page: _p, limit: _l, ...filterParams } = params ?? {}
+    this.lastFilterParams = filterParams
     this.store.setState({ loading: true, error: null })
     const result = await this.getMembersUseCase.execute(params)
     result.fold(
       (error) => this.store.setState({ loading: false, error: this.handleError(error) }),
-      (members) => this.store.setState({ loading: false, members }),
+      ({ data, total }) => this.store.setState({ loading: false, members: data, total }),
     )
   }
 
@@ -87,8 +90,8 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
     result.fold(
       (error) => this.store.setState({ submitting: false, error: this.handleError(error) }),
       (member) => {
-        const current = this.store.getState().members
-        this.store.setState({ submitting: false, members: [member, ...current] })
+        const { members, total } = this.store.getState()
+        this.store.setState({ submitting: false, members: [member, ...members], total: total + 1 })
       },
     )
   }
@@ -115,12 +118,13 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
     result.fold(
       (error) => this.store.setState({ submitting: false, error: this.handleError(error) }),
       () => {
-        const members = this.store.getState().members.filter((m) => m.id !== id)
-        const currentMember =
-          this.store.getState().currentMember?.id === id
-            ? null
-            : this.store.getState().currentMember
-        this.store.setState({ submitting: false, members, currentMember })
+        const { members, total, currentMember } = this.store.getState()
+        this.store.setState({
+          submitting: false,
+          members: members.filter((m) => m.id !== id),
+          total: Math.max(0, total - 1),
+          currentMember: currentMember?.id === id ? null : currentMember,
+        })
       },
     )
   }
@@ -166,12 +170,8 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
       (error) => this.store.setState({ bulkImporting: false, error: this.handleError(error) }),
       (bulkImportResult) => {
         success = true
-        const current = this.store.getState().members
-        this.store.setState({
-          bulkImporting: false,
-          bulkImportResult,
-          members: [...bulkImportResult.members, ...current],
-        })
+        this.store.setState({ bulkImporting: false, bulkImportResult })
+        void this.fetchAll({ ...this.lastFilterParams, page: 1, limit: 100 })
       },
     )
     return success

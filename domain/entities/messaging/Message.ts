@@ -1,5 +1,5 @@
 export type MessageType = 'announcement' | 'newsletter' | 'reminder' | 'alert'
-export type MessageTargetGroup = 'all' | 'fellowship' | 'department' | 'zone'
+export type MessageTargetGroup = 'all' | 'fellowship' | 'department' | 'zone' | 'members'
 export type MessageStatus = 'draft' | 'sent'
 export type DeliveryStatus = 'pending' | 'sent' | 'delivered' | 'failed'
 
@@ -10,6 +10,7 @@ export interface Message {
   type: MessageType
   targetGroup: MessageTargetGroup
   targetId: string | null
+  memberIds: string[]
   status: MessageStatus
   scheduledAt: string | null
   sentAt: string | null
@@ -24,6 +25,7 @@ export interface CreateMessageRequest {
   type: MessageType
   targetGroup: MessageTargetGroup
   targetId?: string | null
+  memberIds?: string[]
   scheduledAt?: string | null
 }
 

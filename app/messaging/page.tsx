@@ -66,6 +66,7 @@ const targetGroupLabels: Record<MessageTargetGroup, string> = {
   fellowship: "Fellowship",
   department: "Department",
   zone: "Zone",
+  members: "Specific Members",
 }
 
 const statusColors = {
@@ -241,6 +242,7 @@ function CampaignDetailDrawer({
 function MessagingPageContent() {
   const searchParams = useSearchParams()
   const fellowshipIdParam = searchParams.get("fellowshipId")
+  const memberIdsParam = searchParams.get("memberIds")
 
   const ploc = useMessagingPloc()
   const fellowshipsPloc = useFellowshipsPloc()
@@ -265,12 +267,15 @@ function MessagingPageContent() {
   const [createTemplateOpen, setCreateTemplateOpen] = useState(false)
   const [templateForm, setTemplateForm] = useState({ name: "", body: "" })
 
+  const preselectedMemberIds = memberIdsParam ? memberIdsParam.split(",").filter(Boolean) : []
+
   const [form, setForm] = useState<{
     title: string
     body: string
     type: MessageType
     targetGroup: MessageTargetGroup
     targetId: string
+    memberIds: string[]
   }>(() => {
     const now = new Date()
     const day = now.toLocaleDateString("en-US", { weekday: "long" })
@@ -279,8 +284,9 @@ function MessagingPageContent() {
       title: `${day} Service Campaign ${time}`,
       body: "",
       type: "announcement",
-      targetGroup: fellowshipIdParam ? "fellowship" : "all",
+      targetGroup: preselectedMemberIds.length > 0 ? "members" : fellowshipIdParam ? "fellowship" : "all",
       targetId: fellowshipIdParam ?? "",
+      memberIds: preselectedMemberIds,
     }
   })
 
@@ -307,7 +313,8 @@ function MessagingPageContent() {
       body: form.body,
       type: form.type,
       targetGroup: form.targetGroup,
-      targetId: form.targetGroup !== "all" && form.targetId ? form.targetId : null,
+      targetId: form.targetGroup !== "all" && form.targetGroup !== "members" && form.targetId ? form.targetId : null,
+      memberIds: form.targetGroup === "members" ? form.memberIds : undefined,
     }
     await ploc.create(payload)
     const state = useMessagingState.getState()
@@ -317,7 +324,7 @@ function MessagingPageContent() {
         const now = new Date()
         const day = now.toLocaleDateString("en-US", { weekday: "long" })
         const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
-        setForm({ title: `${day} Service Campaign ${time}`, body: "", type: "announcement", targetGroup: "all", targetId: "" })
+        setForm({ title: `${day} Service Campaign ${time}`, body: "", type: "announcement", targetGroup: "all", targetId: "", memberIds: [] })
         setActiveTab("history")
         ploc.fetchAll()
       }
@@ -349,9 +356,11 @@ function MessagingPageContent() {
   const sentMessages = messages.filter((m) => m.status === "sent")
   const totalDelivered = sentMessages.length
 
-  const needsTargetId = form.targetGroup !== "all"
+  const needsTargetId = form.targetGroup !== "all" && form.targetGroup !== "members"
   const canSend = form.title.trim().length > 0 && form.body.trim().length > 0 &&
-    (!needsTargetId || form.targetId.length > 0) && !submitting && !sending
+    (!needsTargetId || form.targetId.length > 0) &&
+    (form.targetGroup !== "members" || form.memberIds.length > 0) &&
+    !submitting && !sending
 
   return (
     <AppShell>
@@ -518,7 +527,7 @@ function MessagingPageContent() {
                         <FieldLabel>Audience</FieldLabel>
                         <Select
                           value={form.targetGroup}
-                          onValueChange={(v) => setForm({ ...form, targetGroup: v as MessageTargetGroup, targetId: "" })}
+                          onValueChange={(v) => setForm({ ...form, targetGroup: v as MessageTargetGroup, targetId: "", memberIds: [] })}
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -528,6 +537,7 @@ function MessagingPageContent() {
                             <SelectItem value="fellowship">Fellowship</SelectItem>
                             <SelectItem value="department">Department</SelectItem>
                             <SelectItem value="zone">Zone</SelectItem>
+                            <SelectItem value="members">Specific Members</SelectItem>
                           </SelectContent>
                         </Select>
                       </Field>
@@ -596,7 +606,22 @@ function MessagingPageContent() {
                       </FieldGroup>
                     )}
 
-                    {form.targetGroup !== "all" && !form.targetId && (
+                    {form.targetGroup === "members" && (
+                      <div className="rounded-lg border bg-muted/40 px-4 py-3">
+                        {form.memberIds.length > 0 ? (
+                          <p className="text-sm font-medium">
+                            {form.memberIds.length} member{form.memberIds.length !== 1 ? "s" : ""} selected
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            No members selected — go to People and use checkboxes
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {needsTargetId && !form.targetId && (
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <AlertCircle className="h-3 w-3" />
                         Please select a specific {form.targetGroup}

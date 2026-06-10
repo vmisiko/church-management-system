@@ -3,6 +3,7 @@ import type { Member, MemberDepartment, BulkImportResult, BulkPreviewRow } from 
 
 export interface MembersState {
   members: Member[]
+  total: number
   currentMember: Member | null
   memberDepartments: MemberDepartment[]
   loading: boolean
@@ -18,6 +19,7 @@ export interface MembersState {
 const useMembersState = create<MembersState>(
   (): MembersState => ({
     members: [],
+    total: 0,
     currentMember: null,
     memberDepartments: [],
     loading: false,

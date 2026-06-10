@@ -72,6 +72,14 @@ export interface MemberQueryParams {
   memberType?: MemberType
   activityStatus?: ActivityStatus
   joinDateRange?: 'recently' | 'week' | 'month'
+  search?: string
+  page?: number
+  limit?: number
+}
+
+export interface MembersPage {
+  data: Member[]
+  total: number
 }
 
 export interface BulkImportRow {
