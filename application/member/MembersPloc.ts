@@ -9,7 +9,8 @@ import type { DeleteMemberUseCase } from '@/domain/usecases/member/DeleteMemberU
 import type { GetMemberDepartmentsUseCase } from '@/domain/usecases/member/GetMemberDepartmentsUseCase'
 import type { AssignMemberDepartmentUseCase } from '@/domain/usecases/member/AssignMemberDepartmentUseCase'
 import type { RemoveMemberDepartmentUseCase } from '@/domain/usecases/member/RemoveMemberDepartmentUseCase'
-import type { CreateMemberRequest, UpdateMemberRequest, MemberQueryParams } from '@/domain/entities/member/Member'
+import type { CreateMemberRequest, UpdateMemberRequest, MemberQueryParams, BulkImportRow } from '@/domain/entities/member/Member'
+import type { BulkImportMembersUseCase } from '@/domain/usecases/member/BulkImportMembersUseCase'
 
 export class MembersPloc extends Ploc<StoreApi<MembersState>> {
   private readonly getMembersUseCase: GetMembersUseCase
@@ -20,6 +21,7 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
   private readonly getMemberDepartmentsUseCase: GetMemberDepartmentsUseCase
   private readonly assignMemberDepartmentUseCase: AssignMemberDepartmentUseCase
   private readonly removeMemberDepartmentUseCase: RemoveMemberDepartmentUseCase
+  private readonly bulkImportMembersUseCase: BulkImportMembersUseCase
 
   constructor({
     store,
@@ -31,6 +33,7 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
     getMemberDepartmentsUseCase,
     assignMemberDepartmentUseCase,
     removeMemberDepartmentUseCase,
+    bulkImportMembersUseCase,
   }: {
     store: StoreApi<MembersState>
     getMembersUseCase: GetMembersUseCase
@@ -41,6 +44,7 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
     getMemberDepartmentsUseCase: GetMemberDepartmentsUseCase
     assignMemberDepartmentUseCase: AssignMemberDepartmentUseCase
     removeMemberDepartmentUseCase: RemoveMemberDepartmentUseCase
+    bulkImportMembersUseCase: BulkImportMembersUseCase
   }) {
     super({ store })
     this.getMembersUseCase = getMembersUseCase
@@ -51,6 +55,7 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
     this.getMemberDepartmentsUseCase = getMemberDepartmentsUseCase
     this.assignMemberDepartmentUseCase = assignMemberDepartmentUseCase
     this.removeMemberDepartmentUseCase = removeMemberDepartmentUseCase
+    this.bulkImportMembersUseCase = bulkImportMembersUseCase
   }
 
   async fetchAll(params?: MemberQueryParams): Promise<void> {
@@ -146,5 +151,24 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
         await this.fetchDepartments(memberId)
       },
     )
+  }
+
+  async bulkImport(rows: BulkImportRow[]): Promise<boolean> {
+    this.store.setState({ bulkImporting: true, error: null, bulkImportResult: null })
+    const result = await this.bulkImportMembersUseCase.execute(rows)
+    let success = false
+    result.fold(
+      (error) => this.store.setState({ bulkImporting: false, error: this.handleError(error) }),
+      (bulkImportResult) => {
+        success = true
+        const current = this.store.getState().members
+        this.store.setState({
+          bulkImporting: false,
+          bulkImportResult,
+          members: [...bulkImportResult.members, ...current],
+        })
+      },
+    )
+    return success
   }
 }

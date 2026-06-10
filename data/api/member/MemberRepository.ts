@@ -10,6 +10,8 @@ import type {
   UpdateMemberRequest,
   MemberDepartment,
   MemberQueryParams,
+  BulkImportRow,
+  BulkImportResult,
 } from '@/domain/entities/member/Member'
 
 interface MembersListResponse {
@@ -97,6 +99,15 @@ export class MemberRepository extends BaseRepository implements IMemberRepositor
     try {
       await this.axios.delete<void>(`/api/members/${memberId}/departments/${departmentId}`)
       return Either.right(undefined)
+    } catch (error) {
+      return Either.left(mapToDataError(error))
+    }
+  }
+
+  async bulkImport(rows: BulkImportRow[]): Promise<Either<DataError, BulkImportResult>> {
+    try {
+      const { data } = await this.axios.post<BulkImportResult>('/api/members/bulk-import', { rows })
+      return Either.right(data)
     } catch (error) {
       return Either.left(mapToDataError(error))
     }

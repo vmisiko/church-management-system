@@ -65,6 +65,7 @@ import { DeleteMemberUseCase } from "@/domain/usecases/member/DeleteMemberUseCas
 import { GetMemberDepartmentsUseCase } from "@/domain/usecases/member/GetMemberDepartmentsUseCase"
 import { AssignMemberDepartmentUseCase } from "@/domain/usecases/member/AssignMemberDepartmentUseCase"
 import { RemoveMemberDepartmentUseCase } from "@/domain/usecases/member/RemoveMemberDepartmentUseCase"
+import { BulkImportMembersUseCase } from "@/domain/usecases/member/BulkImportMembersUseCase"
 import { MembersPloc } from "@/application/member/MembersPloc"
 import useMembersState from "@/application/member/useMembersState"
 
@@ -95,6 +96,12 @@ import { GetDeliveriesUseCase } from "@/domain/usecases/messaging/GetDeliveriesU
 import { GetDeliveryStatsUseCase } from "@/domain/usecases/messaging/GetDeliveryStatsUseCase"
 import { MessagingPloc } from "@/application/messaging/MessagingPloc"
 import useMessagingState from "@/application/messaging/useMessagingState"
+import { MessageTemplateRepository } from "@/data/api/messaging/MessageTemplateRepository"
+import { GetTemplatesUseCase } from "@/domain/usecases/messaging/GetTemplatesUseCase"
+import { CreateTemplateUseCase } from "@/domain/usecases/messaging/CreateTemplateUseCase"
+import { DeleteTemplateUseCase } from "@/domain/usecases/messaging/DeleteTemplateUseCase"
+import { MessageTemplatePloc } from "@/application/messaging/MessageTemplatePloc"
+import useMessageTemplateState from "@/application/messaging/useMessageTemplateState"
 
 // ── Inventory ─────────────────────────────────────────────────────────────────
 import { InventoryCategoryRepository } from "@/data/api/inventory/InventoryCategoryRepository"
@@ -272,6 +279,7 @@ export function useMembersPloc(): MembersPloc {
       getMemberDepartmentsUseCase: new GetMemberDepartmentsUseCase(repo),
       assignMemberDepartmentUseCase: new AssignMemberDepartmentUseCase(repo),
       removeMemberDepartmentUseCase: new RemoveMemberDepartmentUseCase(repo),
+      bulkImportMembersUseCase: new BulkImportMembersUseCase(repo),
     })
     return membersPlocSingleton
   }, [router])
@@ -326,6 +334,26 @@ export function useMessagingPloc(): MessagingPloc {
       getDeliveryStatsUseCase: new GetDeliveryStatsUseCase(repo),
     })
     return messagingPlocSingleton
+  }, [router])
+}
+
+// ── Message Templates ─────────────────────────────────────────────────────────
+
+let messageTemplatePlocSingleton: MessageTemplatePloc | null = null
+
+export function useMessageTemplatePloc(): MessageTemplatePloc {
+  const router = useRouter()
+  return useMemo(() => {
+    if (messageTemplatePlocSingleton) return messageTemplatePlocSingleton
+    const axios = getSharedAxios(router)
+    const repo = new MessageTemplateRepository({ axios })
+    messageTemplatePlocSingleton = new MessageTemplatePloc({
+      store: useMessageTemplateState,
+      getTemplatesUseCase: new GetTemplatesUseCase(repo),
+      createTemplateUseCase: new CreateTemplateUseCase(repo),
+      deleteTemplateUseCase: new DeleteTemplateUseCase(repo),
+    })
+    return messageTemplatePlocSingleton
   }, [router])
 }
 

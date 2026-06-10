@@ -8,7 +8,8 @@ import { PeopleTable } from "@/components/people/people-table"
 import { AddMemberDialog } from "@/components/people/add-member-dialog"
 import { MemberDetailDrawer } from "@/components/people/member-detail-drawer"
 import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
+import { Plus, Upload } from "lucide-react"
+import { BulkUploadDialog } from "@/components/people/bulk-upload-dialog"
 import { defaultPeopleFilters, type PeopleFilterState } from "@/lib/people-filters"
 
 function PeoplePageContent() {
@@ -28,6 +29,7 @@ function PeoplePageContent() {
   }
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
   const [filters, setFilters] = useState<PeopleFilterState>(getInitialFilters)
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -43,10 +45,16 @@ function PeoplePageContent() {
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <h1 className="text-2xl font-bold">People Management</h1>
-          <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Member
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)} className="gap-2">
+              <Upload className="h-4 w-4" />
+              Bulk Upload
+            </Button>
+            <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Member
+            </Button>
+          </div>
         </div>
 
         {/* Content */}
@@ -64,6 +72,9 @@ function PeoplePageContent() {
 
         {/* Add Member Dialog */}
         <AddMemberDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen} />
+
+        {/* Bulk Upload Dialog */}
+        <BulkUploadDialog open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen} />
 
         {/* Member Detail Drawer */}
         <MemberDetailDrawer

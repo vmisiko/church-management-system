@@ -1,6 +1,6 @@
 import type { Either } from '@/core/domain/Either'
 import type { DataError } from '@/core/domain/DataError'
-import type { Member, CreateMemberRequest, UpdateMemberRequest, MemberDepartment, MemberQueryParams } from '@/domain/entities/member/Member'
+import type { Member, CreateMemberRequest, UpdateMemberRequest, MemberDepartment, MemberQueryParams, BulkImportRow, BulkImportResult } from '@/domain/entities/member/Member'
 
 export interface IMemberRepository {
   getAll(params?: MemberQueryParams): Promise<Either<DataError, Member[]>>
@@ -11,4 +11,5 @@ export interface IMemberRepository {
   getDepartments(memberId: string): Promise<Either<DataError, MemberDepartment[]>>
   assignDepartment(memberId: string, departmentId: string): Promise<Either<DataError, void>>
   removeDepartment(memberId: string, departmentId: string): Promise<Either<DataError, void>>
+  bulkImport(rows: BulkImportRow[]): Promise<Either<DataError, BulkImportResult>>
 }
