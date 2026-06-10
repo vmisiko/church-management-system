@@ -54,7 +54,6 @@ export default function FellowshipsPage() {
   const zoneNameMap = Object.fromEntries(fellowshipZones.map((z) => [z.id, z.name]))
 
   const filteredFellowships = fellowships.filter((f) => {
-    const zoneName = zoneNameMap[f.zoneId] ?? ""
     const matchesSearch = f.name.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesZone = zoneFilter === "all" || f.zoneId === zoneFilter
     return matchesSearch && matchesZone

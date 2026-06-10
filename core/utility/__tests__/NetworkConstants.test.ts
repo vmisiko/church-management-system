@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { NetworkConstants } from '../NetworkConstants'
 
 describe('NetworkConstants', () => {
   const originalEnv = process.env

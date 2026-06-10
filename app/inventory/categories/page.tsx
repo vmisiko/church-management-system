@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
   TableBody,
@@ -23,12 +24,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, Search, Edit, Trash2, MoreHorizontal, Boxes, Package } from "lucide-react"
@@ -39,44 +43,83 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import {
+  useInventoryCategoriesPloc,
+  useInventoryItemsPloc,
+} from "@/core/di/DependencyLocator"
+import useInventoryCategoriesState from "@/application/inventory/useInventoryCategoriesState"
+import useInventoryItemsState from "@/application/inventory/useInventoryItemsState"
+import type { InventoryCategory } from "@/domain/entities/inventory/InventoryCategory"
 
-interface Category {
-  id: string
-  name: string
-  description: string
-  department: string
-  leader: string
-  leaderInitials: string
-  itemCount: number
-  createdAt: string
+function getInitials(name: string | null): string {
+  if (!name) return "?"
+  return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
 }
 
-const categories: Category[] = [
-  { id: "1", name: "Books", description: "Bibles, Hymn books, and study materials", department: "Media", leader: "John Ochieng", leaderInitials: "JO", itemCount: 5, createdAt: "2024-01-15" },
-  { id: "2", name: "Communion", description: "Communion cups, bread, and related supplies", department: "Worship", leader: "Mary Akinyi", leaderInitials: "MA", itemCount: 3, createdAt: "2024-01-15" },
-  { id: "3", name: "Finance", description: "Offering envelopes, receipt books, etc.", department: "Finance", leader: "Peter Kamau", leaderInitials: "PK", itemCount: 4, createdAt: "2024-01-20" },
-  { id: "4", name: "Furniture", description: "Chairs, tables, and other furniture", department: "Admin", leader: "Grace Wanjiku", leaderInitials: "GW", itemCount: 8, createdAt: "2024-02-01" },
-  { id: "5", name: "Equipment", description: "Audio/visual equipment and electronics", department: "Media", leader: "John Ochieng", leaderInitials: "JO", itemCount: 12, createdAt: "2024-01-15" },
-  { id: "6", name: "Vestments", description: "Robes, clergy attire, and ceremonial items", department: "Worship", leader: "Mary Akinyi", leaderInitials: "MA", itemCount: 6, createdAt: "2024-02-10" },
-  { id: "7", name: "Education", description: "Sunday school and training materials", department: "Children Ministry", leader: "Sarah Muthoni", leaderInitials: "SM", itemCount: 15, createdAt: "2024-01-25" },
-  { id: "8", name: "Safety", description: "First aid, fire extinguishers, safety equipment", department: "Security", leader: "James Otieno", leaderInitials: "JOt", itemCount: 7, createdAt: "2024-03-01" },
-]
-
-const departments = ["Media", "Worship", "Finance", "Admin", "Children Ministry", "Security", "Youth Ministry"]
+const EMPTY_FORM = { name: "", leaderName: "", description: "" }
 
 export default function CategoriesPage() {
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const categoriesPloc = useInventoryCategoriesPloc()
+  const itemsPloc = useInventoryItemsPloc()
+
+  const categories = useInventoryCategoriesState((s) => s.categories)
+  const loading = useInventoryCategoriesState((s) => s.loading)
+  const submitting = useInventoryCategoriesState((s) => s.submitting)
+  const items = useInventoryItemsState((s) => s.items)
+
   const [searchQuery, setSearchQuery] = useState("")
-  const [departmentFilter, setDepartmentFilter] = useState("all")
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [editingCategory, setEditingCategory] = useState<InventoryCategory | null>(null)
+  const [deletingCategory, setDeletingCategory] = useState<InventoryCategory | null>(null)
+  const [form, setForm] = useState(EMPTY_FORM)
 
-  const filteredCategories = categories.filter((cat) => {
-    const matchesSearch = cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cat.description.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesDepartment = departmentFilter === "all" || cat.department === departmentFilter
-    return matchesSearch && matchesDepartment
-  })
+  useEffect(() => {
+    categoriesPloc.fetchAll()
+    itemsPloc.fetchAll()
+  }, [categoriesPloc, itemsPloc])
 
-  const totalItems = categories.reduce((acc, cat) => acc + cat.itemCount, 0)
+  const filteredCategories = categories.filter((cat) =>
+    cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (cat.leaderName ?? "").toLowerCase().includes(searchQuery.toLowerCase()),
+  )
+
+  const totalItems = items.length
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const ok = await categoriesPloc.create({
+      name: form.name,
+      leaderName: form.leaderName || undefined,
+    })
+    if (ok) {
+      setForm(EMPTY_FORM)
+      setIsAddOpen(false)
+    }
+  }
+
+  const openEdit = (cat: InventoryCategory) => {
+    setEditingCategory(cat)
+    setForm({ name: cat.name, leaderName: cat.leaderName ?? "", description: "" })
+  }
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingCategory) return
+    const ok = await categoriesPloc.update(editingCategory.id, {
+      name: form.name,
+      leaderName: form.leaderName || null,
+    })
+    if (ok) {
+      setEditingCategory(null)
+      setForm(EMPTY_FORM)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deletingCategory) return
+    await categoriesPloc.delete(deletingCategory.id)
+    setDeletingCategory(null)
+  }
 
   return (
     <AppShell>
@@ -87,21 +130,25 @@ export default function CategoriesPage() {
             <h1 className="text-2xl font-bold">Inventory Categories</h1>
             <p className="text-muted-foreground">Organize inventory items into categories</p>
           </div>
-          <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+          <Button onClick={() => { setForm(EMPTY_FORM); setIsAddOpen(true) }} className="gap-2">
             <Plus className="h-4 w-4" />
             Add Category
           </Button>
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <Card className="border shadow-sm">
             <CardContent className="p-4 flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
                 <Boxes className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{categories.length}</p>
+                {loading && categories.length === 0 ? (
+                  <Skeleton className="h-7 w-12 mb-1" />
+                ) : (
+                  <p className="text-2xl font-bold">{categories.length}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Total Categories</p>
               </div>
             </CardContent>
@@ -117,20 +164,9 @@ export default function CategoriesPage() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border shadow-sm">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-chart-3/10">
-                <Boxes className="h-6 w-6 text-chart-3" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{departments.length}</p>
-                <p className="text-sm text-muted-foreground">Departments</p>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
-        {/* Filters */}
+        {/* Search */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -141,137 +177,207 @@ export default function CategoriesPage() {
               className="pl-9"
             />
           </div>
-          <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="All Departments" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Departments</SelectItem>
-              {departments.map((dept) => (
-                <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         {/* Categories Table */}
         <Card className="border shadow-sm">
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="font-semibold">Category Name</TableHead>
-                  <TableHead className="font-semibold">Description</TableHead>
-                  <TableHead className="font-semibold">Department</TableHead>
-                  <TableHead className="font-semibold">Leader</TableHead>
-                  <TableHead className="font-semibold">Items</TableHead>
-                  <TableHead className="font-semibold text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCategories.map((category) => (
-                  <TableRow key={category.id}>
-                    <TableCell className="font-medium">{category.name}</TableCell>
-                    <TableCell className="text-muted-foreground max-w-xs truncate">
-                      {category.description}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{category.department}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-7 w-7">
-                          <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                            {category.leaderInitials}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm">{category.leader}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className="bg-primary/10 text-primary border-primary/20">
-                        {category.itemCount} items
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>View Items</DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit Category
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+            {loading && categories.length === 0 ? (
+              <div className="p-4 space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full rounded" />
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="font-semibold">Category Name</TableHead>
+                    <TableHead className="font-semibold">Leader</TableHead>
+                    <TableHead className="font-semibold">Items</TableHead>
+                    <TableHead className="font-semibold text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCategories.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                        No categories found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredCategories.map((category) => {
+                      const itemCount = items.filter((i) => i.categoryId === category.id).length
+                      return (
+                        <TableRow key={category.id}>
+                          <TableCell className="font-medium">{category.name}</TableCell>
+                          <TableCell>
+                            {category.leaderName ? (
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-7 w-7">
+                                  <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                                    {getInitials(category.leaderName)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-sm">{category.leaderName}</span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className="bg-primary/10 text-primary border-primary/20">
+                              {itemCount} items
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openEdit(category)}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit Category
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => setDeletingCategory(category)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
 
         {/* Add Category Dialog */}
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Add Category</DialogTitle>
               <DialogDescription>Create a new inventory category.</DialogDescription>
             </DialogHeader>
-            <form onSubmit={(e) => { e.preventDefault(); setIsAddDialogOpen(false); }}>
+            <form onSubmit={handleAdd}>
               <div className="grid gap-4 py-4">
                 <FieldGroup>
                   <Field>
                     <FieldLabel htmlFor="categoryName">Category Name</FieldLabel>
-                    <Input id="categoryName" placeholder="e.g., Electronics" />
+                    <Input
+                      id="categoryName"
+                      placeholder="e.g., Electronics"
+                      value={form.name}
+                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                      required
+                    />
                   </Field>
                 </FieldGroup>
                 <FieldGroup>
                   <Field>
                     <FieldLabel htmlFor="description">Description</FieldLabel>
-                    <Textarea id="description" placeholder="Describe this category..." rows={3} />
+                    <Textarea
+                      id="description"
+                      placeholder="Describe this category..."
+                      rows={3}
+                      value={form.description}
+                      onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                    />
                   </Field>
                 </FieldGroup>
-                <div className="grid grid-cols-2 gap-4">
-                  <FieldGroup>
-                    <Field>
-                      <FieldLabel>Department</FieldLabel>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select department" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {departments.map((dept) => (
-                            <SelectItem key={dept} value={dept.toLowerCase()}>{dept}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                  </FieldGroup>
-                  <FieldGroup>
-                    <Field>
-                      <FieldLabel htmlFor="leader">Category Leader</FieldLabel>
-                      <Input id="leader" placeholder="Leader name" />
-                    </Field>
-                  </FieldGroup>
-                </div>
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="leader">Category Leader</FieldLabel>
+                    <Input
+                      id="leader"
+                      placeholder="Leader name"
+                      value={form.leaderName}
+                      onChange={(e) => setForm((f) => ({ ...f, leaderName: e.target.value }))}
+                    />
+                  </Field>
+                </FieldGroup>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                <Button type="submit">Add Category</Button>
+                <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? "Adding…" : "Add Category"}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Category Dialog */}
+        <Dialog open={!!editingCategory} onOpenChange={(open) => { if (!open) setEditingCategory(null) }}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Edit Category</DialogTitle>
+              <DialogDescription>Update category details.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleEdit}>
+              <div className="grid gap-4 py-4">
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="editCategoryName">Category Name</FieldLabel>
+                    <Input
+                      id="editCategoryName"
+                      value={form.name}
+                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                      required
+                    />
+                  </Field>
+                </FieldGroup>
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor="editLeader">Category Leader</FieldLabel>
+                    <Input
+                      id="editLeader"
+                      value={form.leaderName}
+                      onChange={(e) => setForm((f) => ({ ...f, leaderName: e.target.value }))}
+                    />
+                  </Field>
+                </FieldGroup>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditingCategory(null)}>Cancel</Button>
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? "Saving…" : "Save Changes"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation */}
+        <AlertDialog open={!!deletingCategory} onOpenChange={(open) => { if (!open) setDeletingCategory(null) }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Category</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete <strong>{deletingCategory?.name}</strong>? Items in this category will be unassigned.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={handleDelete}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AppShell>
   )

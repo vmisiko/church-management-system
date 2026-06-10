@@ -34,7 +34,7 @@ export function AddZoneDialog({ open, onOpenChange, zone }: AddZoneDialogProps) 
       setName(zone?.name ?? "")
       ploc.clearError()
     }
-  }, [open, zone])
+  }, [open, zone, ploc])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

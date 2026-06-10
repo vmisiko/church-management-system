@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
   TableBody,
@@ -33,7 +34,6 @@ import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 import {
-  Plus,
   Search,
   Package,
   TrendingUp,
@@ -43,20 +43,36 @@ import {
   RefreshCw,
   History,
 } from "lucide-react"
+import { useInventoryItemsPloc, useInventoryCategoriesPloc } from "@/core/di/DependencyLocator"
+import useInventoryItemsState from "@/application/inventory/useInventoryItemsState"
+import useInventoryCategoriesState from "@/application/inventory/useInventoryCategoriesState"
+import type { InventoryItem } from "@/domain/entities/inventory/InventoryItem"
 
-interface StockItem {
-  id: string
-  name: string
-  category: string
-  code: string
-  totalQty: number
-  availableQty: number
-  reservedQty: number
-  minStock: number
-  lastRestocked: string
-  status: "healthy" | "low" | "critical" | "out"
+type StockStatus = "healthy" | "low" | "critical" | "out"
+
+function getStockStatus(item: InventoryItem): StockStatus {
+  if (item.availableQty === 0) return "out"
+  const ratio = item.totalQty > 0 ? item.availableQty / item.totalQty : 0
+  if (ratio < 0.2) return "critical"
+  if (ratio < 0.5) return "low"
+  return "healthy"
 }
 
+const statusStyles: Record<StockStatus, string> = {
+  healthy: "bg-success/20 text-success border-success/30",
+  low: "bg-warning/20 text-warning border-warning/30",
+  critical: "bg-destructive/20 text-destructive border-destructive/30",
+  out: "bg-muted text-muted-foreground border-muted",
+}
+
+const statusLabels: Record<StockStatus, string> = {
+  healthy: "Healthy",
+  low: "Low Stock",
+  critical: "Critical",
+  out: "Out of Stock",
+}
+
+// Stock movements have no domain entity yet — kept as static seed data
 interface StockMovement {
   id: string
   itemName: string
@@ -67,18 +83,7 @@ interface StockMovement {
   date: string
 }
 
-const stockItems: StockItem[] = [
-  { id: "1", name: "Hymn Books", category: "Books", code: "BK-001", totalQty: 150, availableQty: 12, reservedQty: 50, minStock: 30, lastRestocked: "2024-02-15", status: "critical" },
-  { id: "2", name: "Communion Cups", category: "Communion", code: "CM-001", totalQty: 500, availableQty: 480, reservedQty: 0, minStock: 100, lastRestocked: "2024-03-10", status: "healthy" },
-  { id: "3", name: "Offering Envelopes", category: "Finance", code: "FN-001", totalQty: 2000, availableQty: 1500, reservedQty: 200, minStock: 500, lastRestocked: "2024-03-01", status: "healthy" },
-  { id: "4", name: "Folding Chairs", category: "Furniture", code: "FR-001", totalQty: 200, availableQty: 160, reservedQty: 20, minStock: 50, lastRestocked: "2024-01-20", status: "healthy" },
-  { id: "5", name: "Wireless Microphones", category: "Equipment", code: "EQ-001", totalQty: 10, availableQty: 6, reservedQty: 2, minStock: 4, lastRestocked: "2024-02-28", status: "low" },
-  { id: "6", name: "Baptismal Robes", category: "Vestments", code: "VS-001", totalQty: 20, availableQty: 0, reservedQty: 0, minStock: 5, lastRestocked: "2023-12-15", status: "out" },
-  { id: "7", name: "Bibles (NIV)", category: "Books", code: "BK-002", totalQty: 100, availableQty: 35, reservedQty: 10, minStock: 25, lastRestocked: "2024-03-05", status: "low" },
-  { id: "8", name: "Sunday School Materials", category: "Education", code: "ED-001", totalQty: 150, availableQty: 120, reservedQty: 30, minStock: 40, lastRestocked: "2024-03-12", status: "healthy" },
-]
-
-const stockMovements: StockMovement[] = [
+const SEED_MOVEMENTS: StockMovement[] = [
   { id: "1", itemName: "Communion Cups", type: "in", quantity: 200, reason: "Monthly restock", performedBy: "Admin", date: "2024-03-18" },
   { id: "2", itemName: "Hymn Books", type: "out", quantity: 50, reason: "Youth Fellowship request", performedBy: "John O.", date: "2024-03-17" },
   { id: "3", itemName: "Folding Chairs", type: "out", quantity: 20, reason: "Women Ministry event", performedBy: "Grace W.", date: "2024-03-16" },
@@ -86,42 +91,76 @@ const stockMovements: StockMovement[] = [
   { id: "5", itemName: "Wireless Microphones", type: "adjustment", quantity: -2, reason: "Inventory count correction", performedBy: "Admin", date: "2024-03-14" },
 ]
 
-const statusStyles = {
-  healthy: "bg-success/20 text-success border-success/30",
-  low: "bg-warning/20 text-warning border-warning/30",
-  critical: "bg-destructive/20 text-destructive border-destructive/30",
-  out: "bg-muted text-muted-foreground border-muted",
-}
-
-const statusLabels = {
-  healthy: "Healthy",
-  low: "Low Stock",
-  critical: "Critical",
-  out: "Out of Stock",
-}
-
-const movementTypeStyles = {
+const movementTypeStyles: Record<StockMovement["type"], string> = {
   in: "bg-success/20 text-success",
   out: "bg-destructive/20 text-destructive",
   adjustment: "bg-warning/20 text-warning",
 }
 
+const EMPTY_RESTOCK_FORM = { itemId: "", quantity: 1, reason: "" }
+
 export default function StockPage() {
-  const [isRestockDialogOpen, setIsRestockDialogOpen] = useState(false)
+  const itemsPloc = useInventoryItemsPloc()
+  const categoriesPloc = useInventoryCategoriesPloc()
+
+  const items = useInventoryItemsState((s) => s.items)
+  const categories = useInventoryCategoriesState((s) => s.categories)
+  const loading = useInventoryItemsState((s) => s.loading)
+  const submitting = useInventoryItemsState((s) => s.submitting)
+
+  const [isRestockOpen, setIsRestockOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [restockForm, setRestockForm] = useState(EMPTY_RESTOCK_FORM)
+  const [movements, setMovements] = useState<StockMovement[]>(SEED_MOVEMENTS)
 
-  const filteredItems = stockItems.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  useEffect(() => {
+    itemsPloc.fetchAll()
+    categoriesPloc.fetchAll()
+  }, [itemsPloc, categoriesPloc])
+
+  const getCategoryName = (categoryId: string) =>
+    categories.find((c) => c.id === categoryId)?.name ?? "—"
+
+  const filteredItems = items.filter((item) => {
+    const matchesSearch =
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.code.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter === "all" || item.status === statusFilter
+    const status = getStockStatus(item)
+    const matchesStatus = statusFilter === "all" || status === statusFilter
     return matchesSearch && matchesStatus
   })
 
-  const healthyCount = stockItems.filter(i => i.status === "healthy").length
-  const lowCount = stockItems.filter(i => i.status === "low").length
-  const criticalCount = stockItems.filter(i => i.status === "critical").length
-  const outCount = stockItems.filter(i => i.status === "out").length
+  const healthyCount = items.filter((i) => getStockStatus(i) === "healthy").length
+  const lowCount = items.filter((i) => getStockStatus(i) === "low").length
+  const criticalCount = items.filter((i) => getStockStatus(i) === "critical").length
+  const outCount = items.filter((i) => getStockStatus(i) === "out").length
+
+  const handleRestock = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const item = items.find((i) => i.id === restockForm.itemId)
+    if (!item) return
+    const ok = await itemsPloc.adjustStock(restockForm.itemId, {
+      adjustment: restockForm.quantity,
+      reason: restockForm.reason || "Restock",
+    })
+    if (ok) {
+      setMovements((prev) => [
+        {
+          id: String(Date.now()),
+          itemName: item.name,
+          type: "in",
+          quantity: restockForm.quantity,
+          reason: restockForm.reason || "Restock",
+          performedBy: "Admin",
+          date: new Date().toISOString().split("T")[0],
+        },
+        ...prev,
+      ])
+      setRestockForm(EMPTY_RESTOCK_FORM)
+      setIsRestockOpen(false)
+    }
+  }
 
   return (
     <AppShell>
@@ -132,7 +171,7 @@ export default function StockPage() {
             <h1 className="text-2xl font-bold">Stock Management</h1>
             <p className="text-muted-foreground">Monitor and manage inventory stock levels</p>
           </div>
-          <Button onClick={() => setIsRestockDialogOpen(true)} className="gap-2">
+          <Button onClick={() => { setRestockForm(EMPTY_RESTOCK_FORM); setIsRestockOpen(true) }} className="gap-2">
             <RefreshCw className="h-4 w-4" />
             Restock Item
           </Button>
@@ -146,7 +185,9 @@ export default function StockPage() {
                 <TrendingUp className="h-6 w-6 text-success" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-success">{healthyCount}</p>
+                {loading && items.length === 0 ? <Skeleton className="h-7 w-10 mb-1" /> : (
+                  <p className="text-2xl font-bold text-success">{healthyCount}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Healthy</p>
               </div>
             </CardContent>
@@ -157,7 +198,9 @@ export default function StockPage() {
                 <TrendingDown className="h-6 w-6 text-warning" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-warning">{lowCount}</p>
+                {loading && items.length === 0 ? <Skeleton className="h-7 w-10 mb-1" /> : (
+                  <p className="text-2xl font-bold text-warning">{lowCount}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Low Stock</p>
               </div>
             </CardContent>
@@ -168,7 +211,9 @@ export default function StockPage() {
                 <AlertTriangle className="h-6 w-6 text-destructive" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-destructive">{criticalCount}</p>
+                {loading && items.length === 0 ? <Skeleton className="h-7 w-10 mb-1" /> : (
+                  <p className="text-2xl font-bold text-destructive">{criticalCount}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Critical</p>
               </div>
             </CardContent>
@@ -179,7 +224,9 @@ export default function StockPage() {
                 <Package className="h-6 w-6 text-muted-foreground" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{outCount}</p>
+                {loading && items.length === 0 ? <Skeleton className="h-7 w-10 mb-1" /> : (
+                  <p className="text-2xl font-bold">{outCount}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Out of Stock</p>
               </div>
             </CardContent>
@@ -215,55 +262,71 @@ export default function StockPage() {
 
             <Card className="border shadow-sm">
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="font-semibold">Item</TableHead>
-                      <TableHead className="font-semibold">
-                        <div className="flex items-center gap-1">
-                          Available
-                          <ArrowUpDown className="h-3 w-3" />
-                        </div>
-                      </TableHead>
-                      <TableHead className="font-semibold">Reserved</TableHead>
-                      <TableHead className="font-semibold">Stock Level</TableHead>
-                      <TableHead className="font-semibold">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredItems.map((item) => {
-                      const stockPercentage = (item.availableQty / item.totalQty) * 100
-                      return (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{item.name}</p>
-                              <p className="text-xs text-muted-foreground">{item.code}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className={item.availableQty <= item.minStock ? "text-destructive font-semibold" : ""}>
-                              {item.availableQty}
-                            </span>
-                            <span className="text-muted-foreground"> / {item.totalQty}</span>
-                          </TableCell>
-                          <TableCell>{item.reservedQty}</TableCell>
-                          <TableCell className="w-32">
-                            <Progress 
-                              value={stockPercentage} 
-                              className="h-2"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={statusStyles[item.status]}>
-                              {statusLabels[item.status]}
-                            </Badge>
+                {loading && items.length === 0 ? (
+                  <div className="p-4 space-y-3">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Skeleton key={i} className="h-10 w-full rounded" />
+                    ))}
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold">Item</TableHead>
+                        <TableHead className="font-semibold">
+                          <div className="flex items-center gap-1">
+                            Available
+                            <ArrowUpDown className="h-3 w-3" />
+                          </div>
+                        </TableHead>
+                        <TableHead className="font-semibold">Category</TableHead>
+                        <TableHead className="font-semibold">Stock Level</TableHead>
+                        <TableHead className="font-semibold">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredItems.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                            No items found
                           </TableCell>
                         </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
+                      ) : (
+                        filteredItems.map((item) => {
+                          const stockPercentage = item.totalQty > 0 ? (item.availableQty / item.totalQty) * 100 : 0
+                          const status = getStockStatus(item)
+                          return (
+                            <TableRow key={item.id}>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{item.name}</p>
+                                  <p className="text-xs text-muted-foreground">{item.code}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <span className={item.availableQty === 0 || stockPercentage < 20 ? "text-destructive font-semibold" : ""}>
+                                  {item.availableQty}
+                                </span>
+                                <span className="text-muted-foreground"> / {item.totalQty}</span>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline">{getCategoryName(item.categoryId)}</Badge>
+                              </TableCell>
+                              <TableCell className="w-32">
+                                <Progress value={stockPercentage} className="h-2" />
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={statusStyles[status]}>
+                                  {statusLabels[status]}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -279,21 +342,19 @@ export default function StockPage() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y">
-                  {stockMovements.map((movement) => (
+                  {movements.map((movement) => (
                     <div key={movement.id} className="px-4 py-3">
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-medium text-sm">{movement.itemName}</span>
                         <Badge className={movementTypeStyles[movement.type]}>
-                          {movement.type === "in" ? "+" : movement.type === "out" ? "-" : ""}
+                          {movement.type === "in" ? "+" : movement.type === "out" ? "−" : ""}
                           {Math.abs(movement.quantity)}
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">{movement.reason}</p>
                       <div className="flex items-center justify-between mt-1">
                         <span className="text-xs text-muted-foreground">{movement.performedBy}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {movement.date}
-                        </span>
+                        <span className="text-xs text-muted-foreground">{movement.date}</span>
                       </div>
                     </div>
                   ))}
@@ -304,23 +365,27 @@ export default function StockPage() {
         </div>
 
         {/* Restock Dialog */}
-        <Dialog open={isRestockDialogOpen} onOpenChange={setIsRestockDialogOpen}>
+        <Dialog open={isRestockOpen} onOpenChange={setIsRestockOpen}>
           <DialogContent className="sm:max-w-[450px]">
             <DialogHeader>
               <DialogTitle>Restock Item</DialogTitle>
               <DialogDescription>Add stock to an inventory item.</DialogDescription>
             </DialogHeader>
-            <form onSubmit={(e) => { e.preventDefault(); setIsRestockDialogOpen(false); }}>
+            <form onSubmit={handleRestock}>
               <div className="grid gap-4 py-4">
                 <FieldGroup>
                   <Field>
                     <FieldLabel>Item</FieldLabel>
-                    <Select>
+                    <Select
+                      value={restockForm.itemId}
+                      onValueChange={(v) => setRestockForm((f) => ({ ...f, itemId: v }))}
+                      required
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select item" />
                       </SelectTrigger>
                       <SelectContent>
-                        {stockItems.map((item) => (
+                        {items.map((item) => (
                           <SelectItem key={item.id} value={item.id}>
                             {item.name} ({item.availableQty} available)
                           </SelectItem>
@@ -332,19 +397,34 @@ export default function StockPage() {
                 <FieldGroup>
                   <Field>
                     <FieldLabel htmlFor="quantity">Quantity to Add</FieldLabel>
-                    <Input id="quantity" type="number" placeholder="0" min="1" />
+                    <Input
+                      id="quantity"
+                      type="number"
+                      min="1"
+                      placeholder="0"
+                      value={restockForm.quantity}
+                      onChange={(e) => setRestockForm((f) => ({ ...f, quantity: Number(e.target.value) }))}
+                    />
                   </Field>
                 </FieldGroup>
                 <FieldGroup>
                   <Field>
                     <FieldLabel htmlFor="reason">Reason</FieldLabel>
-                    <Textarea id="reason" placeholder="e.g., Monthly restock, New purchase..." rows={2} />
+                    <Textarea
+                      id="reason"
+                      placeholder="e.g., Monthly restock, New purchase..."
+                      rows={2}
+                      value={restockForm.reason}
+                      onChange={(e) => setRestockForm((f) => ({ ...f, reason: e.target.value }))}
+                    />
                   </Field>
                 </FieldGroup>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsRestockDialogOpen(false)}>Cancel</Button>
-                <Button type="submit">Restock</Button>
+                <Button type="button" variant="outline" onClick={() => setIsRestockOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? "Restocking…" : "Restock"}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>

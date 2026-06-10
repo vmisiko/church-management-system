@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
 import {
   Table,
   TableBody,
@@ -245,17 +246,17 @@ export function BulkUploadDialog({ open, onOpenChange }: BulkUploadDialogProps) 
               </span>
             </div>
 
-            {/* Preview table */}
-            <ScrollArea className="flex-1 min-h-0 rounded-md border">
+            {/* Preview table — plain div so both x and y scroll work */}
+            <div className="flex-1 min-h-0 overflow-auto rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="w-10">#</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Phone (normalized)</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Fellowship</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead className="w-10 sticky left-0 bg-muted/50">#</TableHead>
+                    <TableHead className="min-w-[160px]">Name</TableHead>
+                    <TableHead className="min-w-[160px]">Phone (normalized)</TableHead>
+                    <TableHead className="min-w-[130px]">Role</TableHead>
+                    <TableHead className="min-w-[130px]">Fellowship</TableHead>
+                    <TableHead className="min-w-[140px]">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -274,7 +275,7 @@ export function BulkUploadDialog({ open, onOpenChange }: BulkUploadDialogProps) 
                                 : ""
                         }
                       >
-                        <TableCell className="text-muted-foreground text-xs">
+                        <TableCell className="text-muted-foreground text-xs sticky left-0 bg-inherit">
                           {row.rowIndex}
                         </TableCell>
                         <TableCell className="font-medium">
@@ -312,7 +313,7 @@ export function BulkUploadDialog({ open, onOpenChange }: BulkUploadDialogProps) 
                   })}
                 </TableBody>
               </Table>
-            </ScrollArea>
+            </div>
 
             {/* Import error */}
             {importError && (
@@ -322,8 +323,10 @@ export function BulkUploadDialog({ open, onOpenChange }: BulkUploadDialogProps) 
               </div>
             )}
 
-            {/* Actions */}
-            <div className="flex justify-between pt-1 shrink-0">
+            <Separator className="shrink-0" />
+
+            {/* Actions — always visible at bottom, never overlaps table */}
+            <div className="flex justify-between shrink-0">
               <Button variant="outline" onClick={() => setStep("upload")}>
                 Back
               </Button>
