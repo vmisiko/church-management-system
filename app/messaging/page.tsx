@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -39,20 +38,20 @@ import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 import {
   Send,
   MessageSquare,
-  Users,
   Clock,
-  CheckCircle2,
-  XCircle,
   AlertCircle,
   FileText,
   BarChart2,
   Plus,
+  Trash2,
 } from "lucide-react"
-import { useMessagingPloc, useFellowshipsPloc, useDepartmentsPloc, useFellowshipZonesPloc } from "@/core/di/DependencyLocator"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { useMessagingPloc, useFellowshipsPloc, useDepartmentsPloc, useFellowshipZonesPloc, useMessageTemplatePloc } from "@/core/di/DependencyLocator"
 import useMessagingState from "@/application/messaging/useMessagingState"
 import useFellowshipsState from "@/application/fellowship/useFellowshipsState"
 import useDepartmentsState from "@/application/department/useDepartmentsState"
 import useFellowshipZonesState from "@/application/fellowship-zone/useFellowshipZonesState"
+import useMessageTemplateState from "@/application/messaging/useMessageTemplateState"
 import type { CreateMessageRequest, MessageType, MessageTargetGroup, Message } from "@/domain/entities/messaging/Message"
 
 const typeLabels: Record<MessageType, string> = {
@@ -81,12 +80,6 @@ const deliveryStatusColors = {
   failed: "bg-destructive/20 text-destructive",
 }
 
-const templates = [
-  { id: "1", name: "Sunday Service Reminder", category: "Weekly", body: "Dear {name}, this is a reminder about our Sunday service at 10am. God bless you!" },
-  { id: "2", name: "Event Invitation", category: "Events", body: "You are cordially invited to our upcoming church event. We look forward to seeing you!" },
-  { id: "3", name: "Meeting Reminder", category: "Meetings", body: "This is a reminder about the meeting scheduled for {date}. Please confirm your attendance." },
-  { id: "4", name: "Offering Acknowledgment", category: "Finance", body: "Thank you for your generous offering. Your contribution supports our ministry." },
-]
 
 function CampaignDetailDrawer({
   message,
@@ -253,6 +246,7 @@ function MessagingPageContent() {
   const fellowshipsPloc = useFellowshipsPloc()
   const departmentsPloc = useDepartmentsPloc()
   const zonesPloc = useFellowshipZonesPloc()
+  const templatePloc = useMessageTemplatePloc()
 
   const messages = useMessagingState((s) => s.messages)
   const loading = useMessagingState((s) => s.loading)
@@ -260,9 +254,16 @@ function MessagingPageContent() {
   const sending = useMessagingState((s) => s.sending)
   const submitError = useMessagingState((s) => s.error)
 
+  const templates = useMessageTemplateState((s) => s.templates)
+  const templatesLoading = useMessageTemplateState((s) => s.loading)
+  const templateSubmitting = useMessageTemplateState((s) => s.submitting)
+
   const fellowships = useFellowshipsState((s) => Array.isArray(s.fellowships) ? s.fellowships : [])
   const departments = useDepartmentsState((s) => Array.isArray(s.departments) ? s.departments : [])
   const zones = useFellowshipZonesState((s) => Array.isArray(s.fellowshipZones) ? s.fellowshipZones : [])
+
+  const [createTemplateOpen, setCreateTemplateOpen] = useState(false)
+  const [templateForm, setTemplateForm] = useState({ name: "", body: "" })
 
   const [form, setForm] = useState<{
     title: string
@@ -270,12 +271,17 @@ function MessagingPageContent() {
     type: MessageType
     targetGroup: MessageTargetGroup
     targetId: string
-  }>({
-    title: "",
-    body: "",
-    type: "announcement",
-    targetGroup: fellowshipIdParam ? "fellowship" : "all",
-    targetId: fellowshipIdParam ?? "",
+  }>(() => {
+    const now = new Date()
+    const day = now.toLocaleDateString("en-US", { weekday: "long" })
+    const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
+    return {
+      title: `${day} Service Campaign ${time}`,
+      body: "",
+      type: "announcement",
+      targetGroup: fellowshipIdParam ? "fellowship" : "all",
+      targetId: fellowshipIdParam ?? "",
+    }
   })
 
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null)
@@ -286,11 +292,13 @@ function MessagingPageContent() {
     fellowshipsPloc.fetchAll()
     departmentsPloc.fetchAll()
     zonesPloc.fetchAll()
-  }, [fellowshipsPloc, departmentsPloc, zonesPloc])
+    templatePloc.fetchAll()
+  }, [fellowshipsPloc, departmentsPloc, zonesPloc, templatePloc])
 
   useEffect(() => {
     if (activeTab === "history") ploc.fetchAll()
-  }, [activeTab, ploc])
+    if (activeTab === "templates") templatePloc.fetchAll()
+  }, [activeTab, ploc, templatePloc])
 
   const handleCompose = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -306,7 +314,10 @@ function MessagingPageContent() {
     if (!state.error && state.messages[0]) {
       await ploc.send(state.messages[0].id)
       if (!useMessagingState.getState().error) {
-        setForm({ title: "", body: "", type: "announcement", targetGroup: "all", targetId: "" })
+        const now = new Date()
+        const day = now.toLocaleDateString("en-US", { weekday: "long" })
+        const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
+        setForm({ title: `${day} Service Campaign ${time}`, body: "", type: "announcement", targetGroup: "all", targetId: "" })
         setActiveTab("history")
         ploc.fetchAll()
       }
@@ -318,9 +329,21 @@ function MessagingPageContent() {
     setDrawerOpen(true)
   }
 
-  const useTemplate = (body: string) => {
-    setForm((prev) => ({ ...prev, body }))
+  const applyTemplate = (name: string, body: string) => {
+    setForm((prev) => ({ ...prev, title: name, body }))
     setActiveTab("compose")
+  }
+
+  const handleCreateTemplate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const ok = await templatePloc.create({
+      name: templateForm.name.trim(),
+      body: templateForm.body.trim(),
+    })
+    if (ok) {
+      setTemplateForm({ name: "", body: "" })
+      setCreateTemplateOpen(false)
+    }
   }
 
   const sentMessages = messages.filter((m) => m.status === "sent")
@@ -422,19 +445,29 @@ function MessagingPageContent() {
 
                       <FieldGroup>
                         <Field>
-                          <FieldLabel>Message Type</FieldLabel>
+                          <FieldLabel>Template</FieldLabel>
                           <Select
-                            value={form.type}
-                            onValueChange={(v) => setForm({ ...form, type: v as MessageType })}
+                            value=""
+                            onValueChange={(id) => {
+                              const tpl = templates.find((t) => t.id === id)
+                              if (tpl) applyTemplate(tpl.name, tpl.body)
+                            }}
                           >
                             <SelectTrigger>
-                              <SelectValue />
+                              <SelectValue placeholder={
+                                templatesLoading
+                                  ? "Loading templates…"
+                                  : templates.length === 0
+                                  ? "No templates yet — create one in the Templates tab"
+                                  : "Select a template to pre-fill"
+                              } />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="announcement">Announcement</SelectItem>
-                              <SelectItem value="newsletter">Newsletter</SelectItem>
-                              <SelectItem value="reminder">Reminder</SelectItem>
-                              <SelectItem value="alert">Alert</SelectItem>
+                              {templates.map((tpl) => (
+                                <SelectItem key={tpl.id} value={tpl.id}>
+                                  {tpl.name}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </Field>
@@ -645,35 +678,52 @@ function MessagingPageContent() {
 
           {/* ── Templates Tab ──────────────────────────────────────────────── */}
           <TabsContent value="templates">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {templates.map((template) => (
-                <Card key={template.id} className="border shadow-sm hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3 mb-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
-                        <FileText className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-semibold">{template.name}</p>
-                        <Badge variant="secondary" className="text-xs mt-1">{template.category}</Badge>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2 mb-4">{template.body}</p>
-                    <Button size="sm" className="w-full" onClick={() => useTemplate(template.body)}>
-                      Use Template
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-              <Card className="border shadow-sm border-dashed hover:border-primary/50 transition-colors">
-                <CardContent className="p-4 flex flex-col items-center justify-center h-full min-h-[160px] gap-2">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                    <Plus className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm text-muted-foreground">Create New Template</p>
-                </CardContent>
-              </Card>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm text-muted-foreground">{templates.length} template{templates.length !== 1 ? "s" : ""}</p>
+              <Button size="sm" className="gap-2" onClick={() => setCreateTemplateOpen(true)}>
+                <Plus className="h-4 w-4" />
+                New Template
+              </Button>
             </div>
+            {templatesLoading && templates.length === 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[0,1,2].map(i => <Skeleton key={i} className="h-44" />)}
+              </div>
+            ) : templates.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+                <FileText className="h-10 w-10 opacity-30" />
+                <p className="text-sm">No templates yet. Create your first one.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {templates.map((template) => (
+                  <Card key={template.id} className="border shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                          <FileText className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold truncate">{template.name}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                          onClick={() => templatePloc.delete(template.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-4">{template.body}</p>
+                      <Button size="sm" className="w-full" onClick={() => applyTemplate(template.name, template.body)}>
+                        Use Template
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
@@ -683,6 +733,50 @@ function MessagingPageContent() {
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
       />
+
+      {/* ── Create Template Dialog ──────────────────────────────────────── */}
+      <Dialog open={createTemplateOpen} onOpenChange={setCreateTemplateOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>New Template</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateTemplate} className="space-y-4 pt-2">
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="tpl-name">Template Name</FieldLabel>
+                <Input
+                  id="tpl-name"
+                  value={templateForm.name}
+                  onChange={(e) => setTemplateForm((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="e.g. Sunday Service Reminder"
+                  required
+                />
+              </Field>
+            </FieldGroup>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="tpl-body">Message Body</FieldLabel>
+                <Textarea
+                  id="tpl-body"
+                  value={templateForm.body}
+                  onChange={(e) => setTemplateForm((p) => ({ ...p, body: e.target.value }))}
+                  placeholder="Use {name} for member name, {date} for date…"
+                  rows={4}
+                  required
+                />
+              </Field>
+            </FieldGroup>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCreateTemplateOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={templateSubmitting}>
+                {templateSubmitting ? "Saving…" : "Save Template"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   )
 }
