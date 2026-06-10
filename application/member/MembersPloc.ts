@@ -11,6 +11,7 @@ import type { AssignMemberDepartmentUseCase } from '@/domain/usecases/member/Ass
 import type { RemoveMemberDepartmentUseCase } from '@/domain/usecases/member/RemoveMemberDepartmentUseCase'
 import type { CreateMemberRequest, UpdateMemberRequest, MemberQueryParams, BulkImportRow } from '@/domain/entities/member/Member'
 import type { BulkImportMembersUseCase } from '@/domain/usecases/member/BulkImportMembersUseCase'
+import type { PreviewBulkImportUseCase } from '@/domain/usecases/member/PreviewBulkImportUseCase'
 
 export class MembersPloc extends Ploc<StoreApi<MembersState>> {
   private readonly getMembersUseCase: GetMembersUseCase
@@ -22,6 +23,7 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
   private readonly assignMemberDepartmentUseCase: AssignMemberDepartmentUseCase
   private readonly removeMemberDepartmentUseCase: RemoveMemberDepartmentUseCase
   private readonly bulkImportMembersUseCase: BulkImportMembersUseCase
+  private readonly previewBulkImportUseCase: PreviewBulkImportUseCase
 
   constructor({
     store,
@@ -34,6 +36,7 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
     assignMemberDepartmentUseCase,
     removeMemberDepartmentUseCase,
     bulkImportMembersUseCase,
+    previewBulkImportUseCase,
   }: {
     store: StoreApi<MembersState>
     getMembersUseCase: GetMembersUseCase
@@ -45,6 +48,7 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
     assignMemberDepartmentUseCase: AssignMemberDepartmentUseCase
     removeMemberDepartmentUseCase: RemoveMemberDepartmentUseCase
     bulkImportMembersUseCase: BulkImportMembersUseCase
+    previewBulkImportUseCase: PreviewBulkImportUseCase
   }) {
     super({ store })
     this.getMembersUseCase = getMembersUseCase
@@ -56,6 +60,7 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
     this.assignMemberDepartmentUseCase = assignMemberDepartmentUseCase
     this.removeMemberDepartmentUseCase = removeMemberDepartmentUseCase
     this.bulkImportMembersUseCase = bulkImportMembersUseCase
+    this.previewBulkImportUseCase = previewBulkImportUseCase
   }
 
   async fetchAll(params?: MemberQueryParams): Promise<void> {
@@ -167,6 +172,20 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
           bulkImportResult,
           members: [...bulkImportResult.members, ...current],
         })
+      },
+    )
+    return success
+  }
+
+  async previewBulkImport(file: File): Promise<boolean> {
+    this.store.setState({ bulkPreviewing: true, error: null })
+    const result = await this.previewBulkImportUseCase.execute(file)
+    let success = false
+    result.fold(
+      (error) => this.store.setState({ bulkPreviewing: false, error: this.handleError(error) }),
+      (response) => {
+        success = true
+        this.store.setState({ bulkPreviewing: false, bulkPreviewRows: response.rows })
       },
     )
     return success

@@ -94,3 +94,25 @@ export interface BulkImportResult {
   errors: { row: number; name: string; reason: string }[]
   members: Member[]
 }
+
+export interface BulkPreviewRow {
+  rowIndex: number
+  fullName: string
+  phone: string
+  normalizedPhone: string | null
+  email: string
+  gender: string
+  ageGroup: string
+  area: string
+  churchRole: string
+  fellowshipId: string | null
+  fellowshipName: string | null
+  isOnline: boolean
+  isInternational: boolean
+  status: 'ready' | 'duplicate_in_file' | 'duplicate_in_db' | 'invalid'
+  issues: string[]
+}
+
+export interface BulkPreviewResponse {
+  rows: BulkPreviewRow[]
+}

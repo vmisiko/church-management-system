@@ -12,6 +12,7 @@ import type {
   MemberQueryParams,
   BulkImportRow,
   BulkImportResult,
+  BulkPreviewResponse,
 } from '@/domain/entities/member/Member'
 
 interface MembersListResponse {
@@ -107,6 +108,17 @@ export class MemberRepository extends BaseRepository implements IMemberRepositor
   async bulkImport(rows: BulkImportRow[]): Promise<Either<DataError, BulkImportResult>> {
     try {
       const { data } = await this.axios.post<BulkImportResult>('/api/members/bulk-import', { rows })
+      return Either.right(data)
+    } catch (error) {
+      return Either.left(mapToDataError(error))
+    }
+  }
+
+  async previewBulkImport(file: File): Promise<Either<DataError, BulkPreviewResponse>> {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const { data } = await this.axios.post<BulkPreviewResponse>('/api/members/bulk-preview', formData)
       return Either.right(data)
     } catch (error) {
       return Either.left(mapToDataError(error))

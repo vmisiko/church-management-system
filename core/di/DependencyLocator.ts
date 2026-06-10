@@ -66,6 +66,7 @@ import { GetMemberDepartmentsUseCase } from "@/domain/usecases/member/GetMemberD
 import { AssignMemberDepartmentUseCase } from "@/domain/usecases/member/AssignMemberDepartmentUseCase"
 import { RemoveMemberDepartmentUseCase } from "@/domain/usecases/member/RemoveMemberDepartmentUseCase"
 import { BulkImportMembersUseCase } from "@/domain/usecases/member/BulkImportMembersUseCase"
+import { PreviewBulkImportUseCase } from "@/domain/usecases/member/PreviewBulkImportUseCase"
 import { MembersPloc } from "@/application/member/MembersPloc"
 import useMembersState from "@/application/member/useMembersState"
 
@@ -280,6 +281,7 @@ export function useMembersPloc(): MembersPloc {
       assignMemberDepartmentUseCase: new AssignMemberDepartmentUseCase(repo),
       removeMemberDepartmentUseCase: new RemoveMemberDepartmentUseCase(repo),
       bulkImportMembersUseCase: new BulkImportMembersUseCase(repo),
+      previewBulkImportUseCase: new PreviewBulkImportUseCase(repo),
     })
     return membersPlocSingleton
   }, [router])

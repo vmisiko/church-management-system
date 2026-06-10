@@ -1,7 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
-import Papa from "papaparse"
+import { useEffect, useRef, useState } from "react"
 import { Upload, Download, CheckCircle2, AlertTriangle, XCircle, FileText, Loader2 } from "lucide-react"
 import {
   Dialog,
@@ -21,17 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useMembersPloc, useFellowshipsPloc } from "@/core/di/DependencyLocator"
+import { useMembersPloc } from "@/core/di/DependencyLocator"
 import useMembersState from "@/application/member/useMembersState"
-import useFellowshipsState from "@/application/fellowship/useFellowshipsState"
-import {
-  processRawRows,
-  generateCsvTemplate,
-  type ParsedMemberRow,
-} from "@/lib/bulk-upload-utils"
+import { generateCsvTemplate } from "@/lib/bulk-upload-utils"
 import type { BulkImportRow } from "@/domain/entities/member/Member"
-
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 interface BulkUploadDialogProps {
   open: boolean
@@ -43,81 +35,67 @@ type Step = "upload" | "preview" | "result"
 const statusConfig = {
   ready: { label: "Ready", className: "bg-green-100 text-green-800 border-0" },
   duplicate_in_file: { label: "Duplicate", className: "bg-yellow-100 text-yellow-800 border-0" },
+  duplicate_in_db: { label: "DB Duplicate", className: "bg-orange-100 text-orange-800 border-0" },
   invalid: { label: "Invalid", className: "bg-red-100 text-red-800 border-0" },
 }
 
 export function BulkUploadDialog({ open, onOpenChange }: BulkUploadDialogProps) {
   const membersPloc = useMembersPloc()
-  const fellowshipsPloc = useFellowshipsPloc()
   const bulkImporting = useMembersState((s) => s.bulkImporting)
+  const bulkPreviewing = useMembersState((s) => s.bulkPreviewing)
+  const bulkPreviewRows = useMembersState((s) => s.bulkPreviewRows)
   const bulkImportResult = useMembersState((s) => s.bulkImportResult)
-  const bulkImportError = useMembersState((s) => s.error)
-  const fellowships = useFellowshipsState((s) => (Array.isArray(s.fellowships) ? s.fellowships : []))
-  const fellowshipsLoading = useFellowshipsState((s) => s.loading)
+  const bulkError = useMembersState((s) => s.error)
 
   const [step, setStep] = useState<Step>("upload")
-  const [parsedRows, setParsedRows] = useState<ParsedMemberRow[]>([])
   const [fileName, setFileName] = useState("")
   const [dragOver, setDragOver] = useState(false)
-  const [parseWarning, setParseWarning] = useState<string | null>(null)
+  const [fileError, setFileError] = useState<string | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (open) {
-      fellowshipsPloc.fetchAll()
       setStep("upload")
-      setParsedRows([])
       setFileName("")
-      setParseWarning(null)
+      setFileError(null)
       setImportError(null)
-    }
-  }, [open, fellowshipsPloc])
-
-  const fellowshipIdMap = new Map(fellowships.map((f) => [f.name, f.id]))
-
-  const parseFile = useCallback(
-    (file: File) => {
-      setFileName(file.name)
-      setParseWarning(null)
-      Papa.parse<Record<string, string>>(file, {
-        header: true,
-        skipEmptyLines: true,
-        transformHeader: (h: string) => h.replace(/\n/g, "").trim(),
-        complete: (result: Papa.ParseResult<Record<string, string>>) => {
-          if (result.errors.length > 0) {
-            setParseWarning(
-              `CSV parsed with ${result.errors.length} issue${result.errors.length > 1 ? "s" : ""}. Some rows may be incomplete.`,
-            )
-          }
-          const rows = processRawRows(result.data, fellowshipIdMap)
-          setParsedRows(rows)
-          setStep("preview")
-        },
+      // Reset Zustand store bulk state so stale rows/results from a previous
+      // session don't flash before the new backend response arrives.
+      useMembersState.setState({
+        bulkPreviewRows: [],
+        bulkPreviewing: false,
+        bulkImportResult: null,
+        bulkImporting: false,
+        error: null,
       })
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fellowshipIdMap.size],
-  )
+    }
+  }, [open])
 
-  const validateAndHandleFile = (file: File) => {
+  const validateAndHandleFile = async (file: File) => {
     if (!file.name.endsWith(".csv") && file.type !== "text/csv") {
-      setParseWarning("Only .csv files are supported. Please download the template to see the expected format.")
+      setFileError("Only .csv files are supported. Please download the template to see the expected format.")
       return
     }
-    parseFile(file)
+    setFileError(null)
+    setFileName(file.name)
+    const success = await membersPloc.previewBulkImport(file)
+    if (success) {
+      setStep("preview")
+    }
+    // On failure, bulkError in state reflects it — displayed via uploadStepError banner
   }
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setDragOver(false)
     const file = e.dataTransfer.files[0]
-    if (file) validateAndHandleFile(file)
+    if (file) void validateAndHandleFile(file)
   }
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) validateAndHandleFile(file)
+    if (file) void validateAndHandleFile(file)
     // Reset so the same file can be re-selected
     e.target.value = ""
   }
@@ -133,9 +111,10 @@ export function BulkUploadDialog({ open, onOpenChange }: BulkUploadDialogProps) 
     URL.revokeObjectURL(url)
   }
 
-  const readyRows = parsedRows.filter((r) => r.status === "ready")
-  const duplicateRows = parsedRows.filter((r) => r.status === "duplicate_in_file")
-  const invalidRows = parsedRows.filter((r) => r.status === "invalid")
+  const readyRows = bulkPreviewRows.filter((r) => r.status === "ready")
+  const duplicateInFileRows = bulkPreviewRows.filter((r) => r.status === "duplicate_in_file")
+  const duplicateInDbRows = bulkPreviewRows.filter((r) => r.status === "duplicate_in_db")
+  const invalidRows = bulkPreviewRows.filter((r) => r.status === "invalid")
 
   const handleImport = async () => {
     setImportError(null)
@@ -146,9 +125,8 @@ export function BulkUploadDialog({ open, onOpenChange }: BulkUploadDialogProps) 
       email: r.email || undefined,
       gender: (r.gender as BulkImportRow["gender"]) || undefined,
       ageGroup: (r.ageGroup as BulkImportRow["ageGroup"]) || undefined,
-      // Only send fellowshipId if it resolved to a real UUID (not a slug fallback)
-      fellowshipId:
-        r.fellowshipId && UUID_REGEX.test(r.fellowshipId) ? r.fellowshipId : undefined,
+      // fellowshipId is already a real UUID or null from the backend
+      fellowshipId: r.fellowshipId ?? undefined,
       churchRole: (r.churchRole as BulkImportRow["churchRole"]) || undefined,
       isOnline: r.isOnline,
       isInternational: r.isInternational,
@@ -157,18 +135,24 @@ export function BulkUploadDialog({ open, onOpenChange }: BulkUploadDialogProps) 
     if (success) {
       setStep("result")
     } else {
-      setImportError(bulkImportError ?? "Import failed. Please try again.")
+      // Read error from store directly — the closed-over `bulkError` is stale
+      // because the Zustand state update happened inside the async call above.
+      const freshError = useMembersState.getState().error
+      setImportError(freshError ?? "Import failed. Please try again.")
     }
   }
 
+  // Derive the upload-step error to display: explicit file error or backend preview error
+  const uploadStepError = fileError ?? (step === "upload" && bulkError ? bulkError : null)
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[820px] max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-[820px] max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>Bulk Upload Members</DialogTitle>
           <DialogDescription>
             {step === "upload" && "Upload a CSV file to import multiple members at once."}
-            {step === "preview" && `Reviewing ${parsedRows.length} rows from "${fileName}"`}
+            {step === "preview" && `Reviewing ${bulkPreviewRows.length} rows from "${fileName}"`}
             {step === "result" && "Import complete — review the results below."}
           </DialogDescription>
         </DialogHeader>
@@ -176,33 +160,33 @@ export function BulkUploadDialog({ open, onOpenChange }: BulkUploadDialogProps) 
         {/* ─── STEP 1: UPLOAD ─── */}
         {step === "upload" && (
           <div className="space-y-4 py-2">
-            {parseWarning && (
+            {uploadStepError && (
               <div className="flex items-start gap-2 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{parseWarning}</span>
+                <span>{uploadStepError}</span>
               </div>
             )}
             <div
               className={`border-2 border-dashed rounded-lg p-10 text-center transition-colors ${
-                fellowshipsLoading
+                bulkPreviewing
                   ? "opacity-60 cursor-wait border-muted-foreground/20"
                   : dragOver
                     ? "border-primary bg-primary/5 cursor-copy"
                     : "border-muted-foreground/30 hover:border-primary/50 cursor-pointer"
               }`}
               onDragOver={(e) => {
-                if (fellowshipsLoading) return
+                if (bulkPreviewing) return
                 e.preventDefault()
                 setDragOver(true)
               }}
               onDragLeave={() => setDragOver(false)}
-              onDrop={fellowshipsLoading ? undefined : handleDrop}
-              onClick={() => !fellowshipsLoading && fileInputRef.current?.click()}
+              onDrop={bulkPreviewing ? undefined : handleDrop}
+              onClick={() => !bulkPreviewing && fileInputRef.current?.click()}
             >
-              {fellowshipsLoading ? (
+              {bulkPreviewing ? (
                 <>
                   <Loader2 className="mx-auto h-10 w-10 text-muted-foreground mb-3 animate-spin" />
-                  <p className="text-sm text-muted-foreground">Loading fellowship data…</p>
+                  <p className="text-sm text-muted-foreground">Analyzing file…</p>
                 </>
               ) : (
                 <>
@@ -237,36 +221,32 @@ export function BulkUploadDialog({ open, onOpenChange }: BulkUploadDialogProps) 
 
         {/* ─── STEP 2: PREVIEW ─── */}
         {step === "preview" && (
-          <div className="flex flex-col flex-1 min-h-0 space-y-3">
-            {parseWarning && (
-              <div className="flex items-start gap-2 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{parseWarning}</span>
-              </div>
-            )}
-
+          <div className="flex flex-col flex-1 min-h-0 gap-3">
             {/* Summary bar */}
-            <div className="flex gap-4 flex-wrap text-sm">
+            <div className="flex gap-4 flex-wrap text-sm shrink-0">
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
                 <span className="font-semibold">{readyRows.length}</span>
-                <span className="text-muted-foreground">to import*</span>
+                <span className="text-muted-foreground">to import</span>
               </span>
               <span className="flex items-center gap-1.5">
                 <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                <span className="font-semibold">{duplicateRows.length}</span> duplicates in file
+                <span className="font-semibold">{duplicateInFileRows.length}</span> duplicates in file
               </span>
+              {duplicateInDbRows.length > 0 && (
+                <span className="flex items-center gap-1.5">
+                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                  <span className="font-semibold">{duplicateInDbRows.length}</span> already in database
+                </span>
+              )}
               <span className="flex items-center gap-1.5">
                 <XCircle className="h-4 w-4 text-red-600" />
                 <span className="font-semibold">{invalidRows.length}</span> invalid
               </span>
             </div>
-            <p className="text-xs text-muted-foreground -mt-1">
-              * Rows already in the database will be skipped as duplicates during import.
-            </p>
 
             {/* Preview table */}
-            <ScrollArea className="flex-1 rounded-md border" style={{ maxHeight: 400 }}>
+            <ScrollArea className="flex-1 min-h-0 rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
@@ -279,7 +259,7 @@ export function BulkUploadDialog({ open, onOpenChange }: BulkUploadDialogProps) 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {parsedRows.map((row) => {
+                  {bulkPreviewRows.map((row) => {
                     const cfg = statusConfig[row.status]
                     return (
                       <TableRow
@@ -289,7 +269,9 @@ export function BulkUploadDialog({ open, onOpenChange }: BulkUploadDialogProps) 
                             ? "bg-red-50/50"
                             : row.status === "duplicate_in_file"
                               ? "bg-yellow-50/50"
-                              : ""
+                              : row.status === "duplicate_in_db"
+                                ? "bg-orange-50/50"
+                                : ""
                         }
                       >
                         <TableCell className="text-muted-foreground text-xs">
@@ -334,14 +316,14 @@ export function BulkUploadDialog({ open, onOpenChange }: BulkUploadDialogProps) 
 
             {/* Import error */}
             {importError && (
-              <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+              <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800 shrink-0">
                 <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{importError}</span>
               </div>
             )}
 
             {/* Actions */}
-            <div className="flex justify-between pt-1">
+            <div className="flex justify-between pt-1 shrink-0">
               <Button variant="outline" onClick={() => setStep("upload")}>
                 Back
               </Button>
