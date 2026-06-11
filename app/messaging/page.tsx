@@ -48,6 +48,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { useMessagingPloc, useFellowshipsPloc, useDepartmentsPloc, useFellowshipZonesPloc, useMessageTemplatePloc } from "@/core/di/DependencyLocator"
 import useMessagingState from "@/application/messaging/useMessagingState"
+import useMessageRecipientsStore from "@/application/messaging/useMessageRecipientsStore"
 import useFellowshipsState from "@/application/fellowship/useFellowshipsState"
 import useDepartmentsState from "@/application/department/useDepartmentsState"
 import useFellowshipZonesState from "@/application/fellowship-zone/useFellowshipZonesState"
@@ -269,6 +270,10 @@ function MessagingPageContent() {
 
   const preselectedMemberIds = memberIdsParam ? memberIdsParam.split(",").filter(Boolean) : []
 
+  const recipients = useMessageRecipientsStore((s) => s.recipients)
+  const removeRecipient = useMessageRecipientsStore((s) => s.removeRecipient)
+  const clearRecipients = useMessageRecipientsStore((s) => s.clear)
+
   const [form, setForm] = useState<{
     title: string
     body: string
@@ -302,6 +307,12 @@ function MessagingPageContent() {
   }, [fellowshipsPloc, departmentsPloc, zonesPloc, templatePloc])
 
   useEffect(() => {
+    if (form.targetGroup === "members") {
+      setForm((prev) => ({ ...prev, memberIds: recipients.map((r) => r.id) }))
+    }
+  }, [recipients, form.targetGroup])
+
+  useEffect(() => {
     if (activeTab === "history") ploc.fetchAll()
     if (activeTab === "templates") templatePloc.fetchAll()
   }, [activeTab, ploc, templatePloc])
@@ -325,6 +336,7 @@ function MessagingPageContent() {
         const day = now.toLocaleDateString("en-US", { weekday: "long" })
         const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
         setForm({ title: `${day} Service Campaign ${time}`, body: "", type: "announcement", targetGroup: "all", targetId: "", memberIds: [] })
+        clearRecipients()
         setActiveTab("history")
         ploc.fetchAll()
       }
@@ -607,16 +619,39 @@ function MessagingPageContent() {
                     )}
 
                     {form.targetGroup === "members" && (
-                      <div className="rounded-lg border bg-muted/40 px-4 py-3">
-                        {form.memberIds.length > 0 ? (
-                          <p className="text-sm font-medium">
-                            {form.memberIds.length} member{form.memberIds.length !== 1 ? "s" : ""} selected
-                          </p>
-                        ) : (
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <div className="rounded-lg border">
+                        <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/40">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            {recipients.length} recipient{recipients.length !== 1 ? "s" : ""}
+                          </span>
+                        </div>
+                        {recipients.length === 0 ? (
+                          <p className="px-3 py-3 text-xs text-muted-foreground flex items-center gap-1">
                             <AlertCircle className="h-3 w-3" />
                             No members selected — go to People and use checkboxes
                           </p>
+                        ) : (
+                          <ScrollArea className="max-h-64">
+                            <ul className="divide-y">
+                              {recipients.map((r) => (
+                                <li key={r.id} className="flex items-center justify-between px-3 py-2 hover:bg-muted/30">
+                                  <div>
+                                    <p className="text-sm font-medium">{r.firstName} {r.lastName}</p>
+                                    {r.phone && <p className="text-xs text-muted-foreground">{r.phone}</p>}
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                                    onClick={() => removeRecipient(r.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </li>
+                              ))}
+                            </ul>
+                          </ScrollArea>
                         )}
                       </div>
                     )}

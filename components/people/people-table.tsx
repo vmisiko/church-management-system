@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input"
 import { toMemberQueryParams, type PeopleFilterState } from "@/lib/people-filters"
 import useMembersState from "@/application/member/useMembersState"
 import { useMembersPloc } from "@/core/di/DependencyLocator"
+import useMessageRecipientsStore from "@/application/messaging/useMessageRecipientsStore"
 
 const statusColors: Record<string, string> = {
   guest: "bg-muted text-muted-foreground",
@@ -45,6 +46,7 @@ export function PeopleTable({ filters, onMemberClick }: PeopleTableProps) {
   const [searchInput, setSearchInput] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const setRecipients = useMessageRecipientsStore((s) => s.setRecipients)
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 400)
@@ -104,6 +106,10 @@ export function PeopleTable({ filters, onMemberClick }: PeopleTableProps) {
 
   function handleMessageSelected() {
     const ids = Array.from(selectedIds)
+    const selectedMembers = members
+      .filter((m) => selectedIds.has(m.id))
+      .map((m) => ({ id: m.id, firstName: m.firstName, lastName: m.lastName, phone: m.phone }))
+    setRecipients(selectedMembers)
     router.push(`/messaging?memberIds=${ids.join(",")}`)
   }
 
