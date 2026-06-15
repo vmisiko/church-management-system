@@ -37,7 +37,7 @@ export function DashboardGreeting() {
         >
           {greeting}
           <br />
-          <span style={{ color: "#E3B04B" }}>Pastor.</span>
+          <span style={{ color: "var(--primary)" }}>Pastor.</span>
         </h1>
         <p className="rise rise-3 mt-3 text-[12.5px]" style={{ color: "var(--muted-foreground)" }}>
           Here&apos;s a summary of City Mega Church — week in review.
@@ -55,9 +55,9 @@ export function DashboardGreeting() {
         <button
           className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-90"
           style={{
-            background: "rgba(227,176,75,.12)",
-            border: "1px solid rgba(227,176,75,.32)",
-            color: "#E3B04B",
+            background: "rgba(192,139,42,.08)",
+            border: "1px solid rgba(192,139,42,.28)",
+            color: "var(--primary)",
           }}
         >
           <Radio className="h-3.5 w-3.5" />

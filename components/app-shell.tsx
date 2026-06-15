@@ -226,26 +226,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                                     fontWeight: 600,
                                   }
                                 : {
-                                    background: "oklch(0.72 0.14 78 / 0.12)",
-                                    color: "oklch(0.42 0.14 60)",
+                                    background: "#C08B2A",
+                                    color: "#ffffff",
                                     fontWeight: 600,
                                   }
                               : {
-                                  color: isDark ? "#CFC8BA" : "var(--muted-foreground)",
+                                  color: isDark ? "#CFC8BA" : "#374151",
                                 }
                           }
                           onMouseEnter={(e) => {
                             if (!active) {
                               const el = e.currentTarget as HTMLAnchorElement
-                              el.style.background = isDark ? "rgba(243,237,225,.04)" : "var(--sidebar-accent)"
-                              el.style.color = isDark ? "#F3EDE1" : "var(--sidebar-foreground)"
+                              el.style.background = isDark ? "rgba(243,237,225,.04)" : "#f4f4f5"
+                              el.style.color = isDark ? "#F3EDE1" : "#111111"
                             }
                           }}
                           onMouseLeave={(e) => {
                             if (!active) {
                               const el = e.currentTarget as HTMLAnchorElement
                               el.style.background = "transparent"
-                              el.style.color = isDark ? "#CFC8BA" : "var(--muted-foreground)"
+                              el.style.color = isDark ? "#CFC8BA" : "#374151"
                             }
                           }}
                         >
@@ -253,7 +253,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             className="h-[15px] w-[15px] shrink-0"
                             style={{
                               color: active
-                                ? isDark ? "#1c1206" : "oklch(0.52 0.14 60)"
+                                ? isDark ? "#1c1206" : "#ffffff"
                                 : "currentColor",
                               opacity: active ? 1 : 0.75,
                             }}
@@ -283,9 +283,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     color: "#E3B04B",
                   }
                 : {
-                    background: "oklch(0.72 0.14 78 / 0.10)",
-                    border: "1px solid oklch(0.72 0.14 78 / 0.28)",
-                    color: "oklch(0.52 0.14 60)",
+                    background: "rgba(192,139,42,.08)",
+                    border: "1px solid rgba(192,139,42,.25)",
+                    color: "#C08B2A",
                   }
             }
           >
@@ -304,8 +304,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <AvatarFallback
                     className="text-[10px] font-semibold rounded-lg"
                     style={{
-                      background: isDark ? "rgba(227,176,75,.15)" : "oklch(0.72 0.14 78 / 0.12)",
-                      color: isDark ? "#E3B04B" : "oklch(0.52 0.14 60)",
+                      background: isDark ? "rgba(227,176,75,.15)" : "rgba(192,139,42,.10)",
+                      color: isDark ? "#E3B04B" : "#C08B2A",
                     }}
                   >
                     {userInitials}
@@ -392,7 +392,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span
                 className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full"
                 style={{
-                  background: isDark ? "#E3B04B" : "oklch(0.72 0.14 78)",
+                  background: isDark ? "#E3B04B" : "#C08B2A",
                   boxShadow: isDark ? "0 0 5px rgba(227,176,75,.7)" : "none",
                 }}
               />
@@ -404,8 +404,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <AvatarFallback
                   className="text-[9px]"
                   style={{
-                    background: isDark ? "rgba(227,176,75,.15)" : "oklch(0.72 0.14 78 / 0.12)",
-                    color: isDark ? "#E3B04B" : "oklch(0.52 0.14 60)",
+                    background: isDark ? "rgba(227,176,75,.15)" : "rgba(192,139,42,.10)",
+                    color: isDark ? "#E3B04B" : "#C08B2A",
                   }}
                 >
                   {userInitials}
