@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Fraunces, Hanken_Grotesk, JetBrains_Mono } from 'next/font/google'
 import { AnalyticsWrapper } from '@/components/analytics-wrapper'
+import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 
 const fraunces = Fraunces({
@@ -41,7 +42,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${fraunces.variable} ${hanken.variable} ${jetbrains.variable}`}>
       <body className="font-sans antialiased">
-        {children}
+        <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
+          {children}
+        </ThemeProvider>
         <AnalyticsWrapper />
       </body>
     </html>

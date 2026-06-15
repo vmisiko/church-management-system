@@ -20,7 +20,10 @@ import {
   LogOut,
   Settings,
   User,
+  Sun,
+  Moon,
 } from "lucide-react"
+import { useTheme } from "next-themes"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -68,19 +71,31 @@ const navGroups = [
   },
 ]
 
-function GoldSeal({ className }: { className?: string }) {
+/* Circular gold seal — matches reference radial gradient seal */
+function CircularSeal({ isDark, size = 44 }: { isDark: boolean; size?: number }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className={className}>
-      <path
-        d="M12 2L18.5 6.5V17.5C18.5 18.881 17.381 20 16 20H8C6.619 20 5.5 18.881 5.5 17.5V6.5L12 2Z"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        fill="currentColor"
-        fillOpacity="0.15"
-      />
-      <line x1="12" y1="7.5" x2="12" y2="15.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-      <line x1="8.5" y1="11" x2="15.5" y2="11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        flexShrink: 0,
+        background: "radial-gradient(circle at 35% 32%, #F4C667 0%, #E3B04B 45%, #A87C2A 100%)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "var(--font-display)",
+        fontWeight: 600,
+        fontSize: Math.round(size * 0.38),
+        color: "#1c1206",
+        letterSpacing: "-0.01em",
+        boxShadow: isDark
+          ? "0 0 0 1px rgba(227,176,75,.45), 0 6px 20px -6px rgba(227,176,75,.55)"
+          : "0 0 0 1px rgba(168,124,42,.28), 0 2px 8px rgba(168,124,42,.12)",
+      }}
+    >
+      CM
+    </div>
   )
 }
 
@@ -88,6 +103,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const ploc = useAuthPloc()
   const { accessToken, currentUser } = useAuthState()
+  const { theme, setTheme } = useTheme()
   const [currentPath, setCurrentPath] = useState("/")
   const [mounted, setMounted] = useState(false)
 
@@ -120,68 +136,58 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     window.location.href = href
   }
 
+  const isDark = mounted && theme === "dark"
   const userInitials = currentUser?.email?.slice(0, 2).toUpperCase() ?? "??"
   const userRole = currentUser?.role?.replace("_", " ") ?? ""
 
-  /* running index for stagger */
   let stagger = 0
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: 'oklch(0.09 0.015 252)' }}>
+    <div className="flex h-screen overflow-hidden bg-background">
 
       {/* ── Sidebar ──────────────────────────────────────────── */}
       <aside
-        className="hidden w-[224px] shrink-0 flex-col relative lg:flex overflow-hidden"
-        style={{ background: 'oklch(0.09 0.015 252)' }}
+        className="hidden w-64 shrink-0 flex-col relative lg:flex overflow-hidden bg-sidebar"
+        style={{ borderRight: "1px solid var(--sidebar-border)" }}
       >
-        {/* Subtle top-down gold glow inside sidebar only */}
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background: 'radial-gradient(ellipse 140% 35% at 50% 0%, oklch(0.72 0.14 78 / 0.06) 0%, transparent 55%)',
-          }}
-        />
 
-        {/* Gold vertical rule — right edge, separating sidebar from content */}
-        <div
-          className="pointer-events-none absolute right-0 top-0 h-full w-px"
-          style={{
-            background: 'linear-gradient(180deg, transparent 0%, oklch(0.72 0.14 78 / 0.45) 20%, oklch(0.72 0.14 78 / 0.45) 80%, transparent 100%)',
-          }}
-        />
+        {/* Subtle top atmospheric glow */}
+        {isDark && (
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background: "radial-gradient(ellipse 120% 30% at 50% 0%, rgba(227,176,75,.07) 0%, transparent 60%)",
+            }}
+          />
+        )}
 
         {/* ── Logo ── */}
-        <div className="relative px-5 pt-7 pb-5 rise rise-1">
-          <div className="flex items-center gap-3">
-            <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm relative"
-              style={{
-                background: 'oklch(0.72 0.14 78 / 0.10)',
-                border: '1px solid oklch(0.72 0.14 78 / 0.35)',
-                boxShadow: '0 0 18px oklch(0.72 0.14 78 / 0.22), 0 0 40px oklch(0.72 0.14 78 / 0.08)',
-              }}
-            >
-              <GoldSeal className="text-sidebar-primary" />
-            </div>
+        <div className="relative px-6 pt-8 pb-6 rise rise-1">
+          <div className="flex items-center gap-3.5">
+            <CircularSeal isDark={isDark} size={44} />
             <div>
               <p
-                className="font-display text-[15px] font-light leading-none tracking-wide"
-                style={{ color: 'oklch(0.93 0.005 75)' }}
+                className="font-display font-light leading-none tracking-wide text-sidebar-foreground"
+                style={{ fontSize: "15.5px" }}
               >
                 City Mega
               </p>
               <p
-                className="font-mono text-[8px] mt-0.5 uppercase tracking-[0.3em] leading-none"
-                style={{ color: 'oklch(0.72 0.14 78 / 0.65)' }}
+                className="font-mono mt-1 uppercase leading-none"
+                style={{
+                  fontSize: "8px",
+                  letterSpacing: "0.3em",
+                  color: isDark ? "rgba(227,176,75,.60)" : "var(--muted-foreground)",
+                }}
               >
-                Private Ledger
+                {isDark ? "The Ledger" : "Administration"}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Gold rule */}
-        <div className="mx-5 h-px" style={{ background: 'oklch(0.72 0.14 78 / 0.14)' }} />
+        {/* Divider */}
+        <div className="mx-5 h-px" style={{ background: "var(--sidebar-border)" }} />
 
         {/* ── Navigation ── */}
         <ScrollArea className="relative flex-1 py-5">
@@ -191,12 +197,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               return (
                 <div key={group.label} className={`rise rise-${Math.min(stagger + 1, 12)}`}>
                   <p
-                    className="font-mono px-2 mb-1.5 text-[8px] uppercase tracking-[0.3em]"
-                    style={{ color: 'oklch(0.72 0.14 78 / 0.40)' }}
+                    className="font-mono px-3 mb-2 uppercase"
+                    style={{
+                      fontSize: "9px",
+                      letterSpacing: "0.26em",
+                      color: isDark ? "rgba(94,110,120,.9)" : "var(--muted-foreground)",
+                    }}
                   >
                     {group.label}
                   </p>
-                  <div className="flex flex-col gap-px">
+                  <div className="flex flex-col gap-0.5">
                     {group.items.map((item) => {
                       const active = isActive(item.href)
                       return (
@@ -205,25 +215,48 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           href={item.href}
                           onClick={(e) => { e.preventDefault(); handleNav(item.href) }}
                           className={cn(
-                            "relative flex items-center gap-2.5 rounded px-2 py-2 text-[12.5px] font-medium transition-all duration-150 cursor-pointer select-none",
+                            "relative flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-150 cursor-pointer select-none",
+                          )}
+                          style={
                             active
-                              ? "text-sidebar-foreground"
-                              : "text-sidebar-foreground/40 hover:text-sidebar-foreground/70"
-                          )}
-                          style={active ? { background: 'oklch(0.72 0.14 78 / 0.08)' } : undefined}
+                              ? isDark
+                                ? {
+                                    background: "linear-gradient(100deg, #F4C667, #E3B04B)",
+                                    color: "#1c1206",
+                                    fontWeight: 600,
+                                  }
+                                : {
+                                    background: "oklch(0.72 0.14 78 / 0.12)",
+                                    color: "oklch(0.42 0.14 60)",
+                                    fontWeight: 600,
+                                  }
+                              : {
+                                  color: isDark ? "#CFC8BA" : "var(--muted-foreground)",
+                                }
+                          }
+                          onMouseEnter={(e) => {
+                            if (!active) {
+                              const el = e.currentTarget as HTMLAnchorElement
+                              el.style.background = isDark ? "rgba(243,237,225,.04)" : "var(--sidebar-accent)"
+                              el.style.color = isDark ? "#F3EDE1" : "var(--sidebar-foreground)"
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!active) {
+                              const el = e.currentTarget as HTMLAnchorElement
+                              el.style.background = "transparent"
+                              el.style.color = isDark ? "#CFC8BA" : "var(--muted-foreground)"
+                            }
+                          }}
                         >
-                          {active && (
-                            <span
-                              className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-0.5 rounded-full"
-                              style={{
-                                background: 'oklch(0.72 0.14 78)',
-                                boxShadow: '0 0 8px oklch(0.72 0.14 78 / 0.6)',
-                              }}
-                            />
-                          )}
                           <item.icon
-                            className="h-[14px] w-[14px] shrink-0"
-                            style={{ color: active ? 'oklch(0.72 0.14 78)' : undefined }}
+                            className="h-[15px] w-[15px] shrink-0"
+                            style={{
+                              color: active
+                                ? isDark ? "#1c1206" : "oklch(0.52 0.14 60)"
+                                : "currentColor",
+                              opacity: active ? 1 : 0.75,
+                            }}
                           />
                           {item.name}
                         </a>
@@ -238,44 +271,62 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* ── Add Member ── */}
         <div className="relative px-4 pb-4">
-          <div className="h-px mb-3" style={{ background: 'oklch(0.72 0.14 78 / 0.12)' }} />
+          <div className="h-px mb-3" style={{ background: "var(--sidebar-border)" }} />
           <button
             onClick={() => handleNav("/people")}
-            className="w-full flex items-center justify-center gap-2 rounded py-2 text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-90"
-            style={{
-              background: 'oklch(0.72 0.14 78 / 0.12)',
-              border: '1px solid oklch(0.72 0.14 78 / 0.3)',
-              color: 'oklch(0.72 0.14 78)',
-            }}
+            className="w-full flex items-center justify-center gap-2 rounded-lg py-2.5 text-[12.5px] font-semibold cursor-pointer transition-opacity hover:opacity-90"
+            style={
+              isDark
+                ? {
+                    background: "rgba(227,176,75,.12)",
+                    border: "1px solid rgba(227,176,75,.28)",
+                    color: "#E3B04B",
+                  }
+                : {
+                    background: "oklch(0.72 0.14 78 / 0.10)",
+                    border: "1px solid oklch(0.72 0.14 78 / 0.28)",
+                    color: "oklch(0.52 0.14 60)",
+                  }
+            }
           >
-            <Plus className="h-3 w-3" />
+            <Plus className="h-3.5 w-3.5" />
             Add Member
           </button>
         </div>
 
         {/* ── User profile ── */}
-        <div className="relative px-3 pb-5" style={{ borderTop: '1px solid oklch(0.72 0.14 78 / 0.10)' }}>
+        <div className="relative px-3 pb-5" style={{ borderTop: "1px solid var(--sidebar-border)" }}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="mt-3 w-full flex items-center gap-2 rounded px-2 py-2 cursor-pointer transition-colors hover:bg-sidebar-accent/50 text-left">
-                <Avatar className="h-6 w-6 shrink-0">
+              <button className="mt-3 w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 cursor-pointer transition-colors hover:bg-sidebar-accent text-left">
+                <Avatar className="h-7 w-7 shrink-0">
                   <AvatarImage src="/placeholder-avatar.jpg" alt="User" />
                   <AvatarFallback
-                    className="text-[9px] font-semibold"
-                    style={{ background: 'oklch(0.72 0.14 78 / 0.15)', color: 'oklch(0.72 0.14 78)' }}
+                    className="text-[10px] font-semibold rounded-lg"
+                    style={{
+                      background: isDark ? "rgba(227,176,75,.15)" : "oklch(0.72 0.14 78 / 0.12)",
+                      color: isDark ? "#E3B04B" : "oklch(0.52 0.14 60)",
+                    }}
                   >
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-medium leading-none truncate" style={{ color: 'oklch(0.92 0.005 75)' }}>
+                  <p className="text-[11.5px] font-medium leading-none truncate text-sidebar-foreground">
                     {currentUser?.email ?? "Loading…"}
                   </p>
-                  <p className="text-[9px] font-mono uppercase tracking-wider mt-0.5 capitalize" style={{ color: 'oklch(0.72 0.14 78 / 0.65)' }}>
+                  <p
+                    className="font-mono mt-1 uppercase leading-none capitalize"
+                    style={{
+                      fontSize: "9px",
+                      letterSpacing: "0.2em",
+                      color: isDark ? "rgba(227,176,75,.65)" : "var(--muted-foreground)",
+                    }}
+                  >
                     {userRole}
                   </p>
                 </div>
-                <ChevronDown className="h-3 w-3 shrink-0" style={{ color: 'oklch(0.72 0.14 78 / 0.4)' }} />
+                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-sidebar-foreground/30" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" side="top" className="w-52 mb-1">
@@ -297,49 +348,66 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* ── Main ─────────────────────────────────────────────── */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+
         {/* Header */}
         <header
-          className="flex h-12 shrink-0 items-center justify-between px-6"
-          style={{
-            background: 'oklch(0.09 0.015 252)',
-            borderBottom: '1px solid oklch(0.18 0.015 252)',
-          }}
+          className="flex h-12 shrink-0 items-center justify-between px-6 bg-background"
+          style={{ borderBottom: "1px solid var(--border)" }}
         >
-          <div className="flex items-center gap-4">
-            {/* Mobile logo */}
-            <div className="flex items-center gap-2 lg:hidden">
-              <GoldSeal className="text-accent" />
-              <span className="font-display text-sm">City Mega</span>
-            </div>
-
-            {/* Search */}
-            <div className="relative hidden sm:block">
-              <Search
-                className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2"
-                style={{ color: 'oklch(0.50 0.01 75)' }}
-              />
-              <Input
-                placeholder="Search records…"
-                className="h-7 w-64 pl-8 text-[12px] border-0 focus-visible:ring-1 focus-visible:ring-accent/30"
-                style={{ background: 'oklch(0.13 0.015 252)', color: 'oklch(0.93 0.005 75)' }}
-              />
-            </div>
+          {/* Mobile logo */}
+          <div className="flex items-center gap-2.5 lg:hidden">
+            <CircularSeal isDark={isDark} size={28} />
+            <span className="font-display text-sm text-foreground">City Mega</span>
           </div>
 
-          {/* Right */}
-          <div className="flex items-center gap-3">
-            <button className="relative flex h-7 w-7 items-center justify-center rounded cursor-pointer transition-colors hover:bg-secondary">
-              <Bell className="h-3.5 w-3.5" style={{ color: 'oklch(0.50 0.01 75)' }} />
+          {/* Search */}
+          <div className="relative hidden sm:block">
+            <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search records…"
+              className="h-7 w-64 pl-8 text-[12px] border-0 bg-secondary focus-visible:ring-1 focus-visible:ring-accent/30"
+            />
+          </div>
+
+          {/* Right controls */}
+          <div className="flex items-center gap-1.5 ml-auto">
+
+            {/* Theme toggle */}
+            {mounted && (
+              <button
+                onClick={() => setTheme(isDark ? "light" : "dark")}
+                className="flex h-7 w-7 items-center justify-center rounded-lg cursor-pointer transition-colors hover:bg-secondary"
+                title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {isDark
+                  ? <Sun className="h-3.5 w-3.5 text-muted-foreground" />
+                  : <Moon className="h-3.5 w-3.5 text-muted-foreground" />
+                }
+              </button>
+            )}
+
+            {/* Notifications */}
+            <button className="relative flex h-7 w-7 items-center justify-center rounded-lg cursor-pointer transition-colors hover:bg-secondary">
+              <Bell className="h-3.5 w-3.5 text-muted-foreground" />
               <span
-                className="absolute right-1.5 top-1.5 h-1 w-1 rounded-full"
-                style={{ background: 'oklch(0.72 0.14 78)', boxShadow: '0 0 4px oklch(0.72 0.14 78)' }}
+                className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full"
+                style={{
+                  background: isDark ? "#E3B04B" : "oklch(0.72 0.14 78)",
+                  boxShadow: isDark ? "0 0 5px rgba(227,176,75,.7)" : "none",
+                }}
               />
             </button>
 
             {/* Mobile avatar */}
             <div className="flex lg:hidden">
               <Avatar className="h-7 w-7">
-                <AvatarFallback className="text-[9px]" style={{ background: 'oklch(0.72 0.14 78 / 0.15)', color: 'oklch(0.72 0.14 78)' }}>
+                <AvatarFallback
+                  className="text-[9px]"
+                  style={{
+                    background: isDark ? "rgba(227,176,75,.15)" : "oklch(0.72 0.14 78 / 0.12)",
+                    color: isDark ? "#E3B04B" : "oklch(0.52 0.14 60)",
+                  }}
+                >
                   {userInitials}
                 </AvatarFallback>
               </Avatar>
@@ -347,17 +415,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        {/* Page content */}
-        <main
-          className="flex-1 overflow-auto"
-          style={{
-            background: `
-              radial-gradient(ellipse 80% 50% at 80% 5%, oklch(0.72 0.14 78 / 0.055) 0%, transparent 55%),
-              radial-gradient(ellipse 60% 70% at 10% 90%, oklch(0.45 0.15 260 / 0.07) 0%, transparent 55%),
-              oklch(0.09 0.015 252)
-            `,
-          }}
-        >
+        {/* Page content — no inline gradient, body::before handles the atmosphere */}
+        <main className="flex-1 overflow-auto bg-background">
           {children}
         </main>
       </div>

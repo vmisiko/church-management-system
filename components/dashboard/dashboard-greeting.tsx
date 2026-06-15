@@ -12,11 +12,8 @@ function getGreeting() {
 
 function getFormattedDate() {
   return new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  })
+    weekday: "short", month: "short", day: "numeric", year: "numeric",
+  }).toUpperCase()
 }
 
 export function DashboardGreeting() {
@@ -30,52 +27,37 @@ export function DashboardGreeting() {
 
   return (
     <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-      {/* Left — oversized Fraunces greeting */}
       <div>
-        <p
-          className="rise rise-1 font-mono text-[9px] uppercase tracking-[0.3em] mb-3"
-          style={{ color: 'oklch(0.72 0.14 78 / 0.55)' }}
-        >
-          {date}
+        <p className="rise rise-1 font-mono text-[9px] uppercase tracking-[0.28em] mb-3 text-muted-foreground">
+          City Mega Church · {date}
         </p>
         <h1
-          className="rise rise-2 font-display font-light italic leading-[1.05]"
-          style={{
-            fontSize: 'clamp(2rem, 4vw, 3.25rem)',
-            color: 'oklch(0.93 0.005 75)',
-          }}
+          className="rise rise-2 font-display font-light italic leading-[1.02] text-foreground"
+          style={{ fontSize: "clamp(2.4rem, 4.5vw, 3.5rem)", letterSpacing: "-0.015em", fontWeight: 340 }}
         >
           {greeting}
           <br />
-          <span style={{ color: 'oklch(0.72 0.14 78)' }}>Pastor.</span>
+          <span style={{ color: "#E3B04B" }}>Pastor.</span>
         </h1>
-        <p
-          className="rise rise-3 mt-3 text-[13px]"
-          style={{ color: 'oklch(0.50 0.01 75)' }}
-        >
+        <p className="rise rise-3 mt-3 text-[12.5px]" style={{ color: "var(--muted-foreground)" }}>
           Here&apos;s a summary of City Mega Church — week in review.
         </p>
       </div>
 
-      {/* Right — action buttons */}
       <div className="rise rise-3 flex items-center gap-2.5 shrink-0">
         <button
-          className="flex items-center gap-2 rounded px-4 py-2 text-[12px] font-medium cursor-pointer transition-colors hover:bg-secondary"
-          style={{
-            border: '1px solid oklch(0.20 0.015 252)',
-            color: 'oklch(0.50 0.01 75)',
-          }}
+          className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-medium cursor-pointer transition-colors hover:bg-secondary text-muted-foreground"
+          style={{ border: "1px solid var(--border)" }}
         >
           <FileText className="h-3.5 w-3.5" />
           Generate Report
         </button>
         <button
-          className="flex items-center gap-2 rounded px-4 py-2 text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-90"
+          className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-semibold cursor-pointer transition-opacity hover:opacity-90"
           style={{
-            background: 'oklch(0.72 0.14 78 / 0.12)',
-            border: '1px solid oklch(0.72 0.14 78 / 0.35)',
-            color: 'oklch(0.72 0.14 78)',
-            boxShadow: '0 0 16px oklch(0.72 0.14 78 / 0.10)',
+            background: "rgba(227,176,75,.12)",
+            border: "1px solid rgba(227,176,75,.32)",
+            color: "#E3B04B",
           }}
         >
           <Radio className="h-3.5 w-3.5" />

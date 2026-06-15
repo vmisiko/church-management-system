@@ -18,7 +18,7 @@ export default function DashboardPage() {
         {/* ── Divider ── */}
         <div
           className="rise rise-4 h-px w-full"
-          style={{ background: 'linear-gradient(90deg, oklch(0.72 0.14 78 / 0.3), oklch(0.72 0.14 78 / 0.05) 70%, transparent)' }}
+          style={{ background: "linear-gradient(90deg, rgba(227,176,75,.32), rgba(227,176,75,.06) 70%, transparent)" }}
         />
 
         {/* ── Numbered vault cards ── */}

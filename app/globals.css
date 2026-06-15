@@ -3,102 +3,125 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* ── Private Ledger — Ink Canvas Theme ─────────────────────────────── */
+/* ── LIGHT theme ────────────────────────────────────────────────────── */
 :root {
-  /* Deep ink canvas */
-  --background: oklch(0.09 0.015 252);
-  --foreground: oklch(0.93 0.005 75);
+  --background: oklch(0.97 0.012 75);
+  --foreground: oklch(0.16 0.025 50);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.16 0.025 50);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.16 0.025 50);
+  --primary: oklch(0.52 0.14 60);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.93 0.012 75);
+  --secondary-foreground: oklch(0.3 0.02 55);
+  --muted: oklch(0.93 0.012 75);
+  --muted-foreground: oklch(0.52 0.02 60);
+  --accent: oklch(0.72 0.14 78);
+  --accent-foreground: oklch(0.16 0.025 50);
+  --destructive: oklch(0.50 0.2 22);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.88 0.015 75);
+  --input: oklch(0.93 0.012 75);
+  --ring: oklch(0.72 0.14 78 / 0.5);
+  --chart-1: oklch(0.72 0.14 78);
+  --chart-2: oklch(0.55 0.14 200);
+  --chart-3: oklch(0.55 0.15 30);
+  --chart-4: oklch(0.60 0.1 140);
+  --chart-5: oklch(0.45 0.15 20);
+  --radius: 0.375rem;
+  --sidebar: oklch(0.97 0.012 75);
+  --sidebar-foreground: oklch(0.16 0.025 50);
+  --sidebar-primary: oklch(0.52 0.14 60);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.92 0.012 75);
+  --sidebar-accent-foreground: oklch(0.16 0.025 50);
+  --sidebar-border: oklch(0.88 0.015 75);
+  --sidebar-ring: oklch(0.72 0.14 78);
+  --success: oklch(0.62 0.18 150);
+  --success-foreground: oklch(1 0 0);
+  --grain-opacity: 0.012;
 
-  /* Cards — slightly lighter ink surface */
-  --card: oklch(0.13 0.015 252);
-  --card-foreground: oklch(0.93 0.005 75);
-  --popover: oklch(0.13 0.015 252);
-  --popover-foreground: oklch(0.93 0.005 75);
+  /* Light palette tokens */
+  --gold: oklch(0.72 0.14 78);
+  --gold-bright: oklch(0.80 0.14 82);
+  --line: oklch(0.88 0.015 75);
+  --panel: oklch(0.96 0.008 75);
+}
 
-  /* Gold as the single dominant accent */
-  --primary: oklch(0.72 0.14 78);
-  --primary-foreground: oklch(0.09 0.015 252);
+/* ── DARK theme — exact tokens from reference ───────────────────────── */
+.dark {
+  /* Base surfaces */
+  --background: #0A141C;
+  --foreground: #F3EDE1;
+  --card: #0E1B25;
+  --card-foreground: #F3EDE1;
+  --popover: #0E1B25;
+  --popover-foreground: #F3EDE1;
 
-  /* Surface tones */
-  --secondary: oklch(0.17 0.015 252);
-  --secondary-foreground: oklch(0.80 0.005 75);
-  --muted: oklch(0.17 0.015 252);
-  --muted-foreground: oklch(0.50 0.01 75);
+  /* Gold primary */
+  --primary: #E3B04B;
+  --primary-foreground: #1c1206;
+
+  /* Secondary / muted */
+  --secondary: rgba(243,237,225,.055);
+  --secondary-foreground: #F3EDE1;
+  --muted: rgba(243,237,225,.035);
+  --muted-foreground: #7E8E98;
 
   /* Accent = gold */
-  --accent: oklch(0.72 0.14 78);
-  --accent-foreground: oklch(0.09 0.015 252);
+  --accent: #E3B04B;
+  --accent-foreground: #1c1206;
 
-  --destructive: oklch(0.55 0.20 22);
-  --destructive-foreground: oklch(0.93 0.005 75);
-
-  --border: oklch(0.20 0.015 252);
-  --input: oklch(0.17 0.015 252);
-  --ring: oklch(0.72 0.14 78 / 0.5);
+  /* Semantic */
+  --destructive: #EB6A56;
+  --destructive-foreground: #F3EDE1;
+  --border: rgba(243,237,225,.10);
+  --input: rgba(243,237,225,.06);
+  --ring: rgba(227,176,75,.5);
 
   /* Charts */
-  --chart-1: oklch(0.72 0.14 78);
-  --chart-2: oklch(0.60 0.14 200);
-  --chart-3: oklch(0.60 0.15 30);
-  --chart-4: oklch(0.62 0.10 140);
-  --chart-5: oklch(0.50 0.15 20);
+  --chart-1: #E3B04B;
+  --chart-2: #5CA8E0;
+  --chart-3: #EB6A56;
+  --chart-4: #6FD79B;
+  --chart-5: #EFA64A;
 
   --radius: 0.375rem;
 
-  /* Sidebar — same ink canvas as background */
-  --sidebar: oklch(0.09 0.015 252);
-  --sidebar-foreground: oklch(0.92 0.005 75);
-  --sidebar-primary: oklch(0.72 0.14 78);
-  --sidebar-primary-foreground: oklch(0.09 0.015 252);
-  --sidebar-accent: oklch(0.13 0.015 252);
-  --sidebar-accent-foreground: oklch(0.92 0.005 75);
-  --sidebar-border: oklch(0.18 0.015 252);
-  --sidebar-ring: oklch(0.72 0.14 78);
+  /* Sidebar */
+  --sidebar: #0A141C;
+  --sidebar-foreground: #F3EDE1;
+  --sidebar-primary: #E3B04B;
+  --sidebar-primary-foreground: #1c1206;
+  --sidebar-accent: rgba(243,237,225,.055);
+  --sidebar-accent-foreground: #F3EDE1;
+  --sidebar-border: rgba(243,237,225,.10);
+  --sidebar-ring: #E3B04B;
 
-  --success: oklch(0.65 0.16 145);
-  --success-foreground: oklch(0.07 0.015 252);
-  --warning: oklch(0.72 0.14 78);
-  --warning-foreground: oklch(0.07 0.015 252);
-}
+  --success: #6FD79B;
+  --success-foreground: #0A141C;
+  --grain-opacity: 0.05;
 
-/* Dark alias — same ink palette, even deeper */
-.dark {
-  --background: oklch(0.07 0.015 252);
-  --foreground: oklch(0.93 0.005 75);
-  --card: oklch(0.11 0.015 252);
-  --card-foreground: oklch(0.93 0.005 75);
-  --popover: oklch(0.11 0.015 252);
-  --popover-foreground: oklch(0.93 0.005 75);
-  --primary: oklch(0.72 0.14 78);
-  --primary-foreground: oklch(0.07 0.015 252);
-  --secondary: oklch(0.15 0.015 252);
-  --secondary-foreground: oklch(0.80 0.005 75);
-  --muted: oklch(0.15 0.015 252);
-  --muted-foreground: oklch(0.48 0.01 75);
-  --accent: oklch(0.72 0.14 78);
-  --accent-foreground: oklch(0.07 0.015 252);
-  --destructive: oklch(0.55 0.22 22);
-  --destructive-foreground: oklch(0.93 0.005 75);
-  --border: oklch(0.18 0.015 252);
-  --input: oklch(0.15 0.015 252);
-  --ring: oklch(0.72 0.14 78 / 0.5);
-  --chart-1: oklch(0.72 0.14 78);
-  --chart-2: oklch(0.60 0.14 200);
-  --chart-3: oklch(0.60 0.15 30);
-  --chart-4: oklch(0.62 0.10 140);
-  --chart-5: oklch(0.50 0.15 20);
-  --sidebar: oklch(0.06 0.015 252);
-  --sidebar-foreground: oklch(0.92 0.005 75);
-  --sidebar-primary: oklch(0.72 0.14 78);
-  --sidebar-primary-foreground: oklch(0.06 0.015 252);
-  --sidebar-accent: oklch(0.11 0.015 252);
-  --sidebar-accent-foreground: oklch(0.92 0.005 75);
-  --sidebar-border: oklch(0.16 0.015 252);
-  --sidebar-ring: oklch(0.72 0.14 78);
-  --success: oklch(0.65 0.16 145);
-  --success-foreground: oklch(0.06 0.015 252);
-  --warning: oklch(0.72 0.14 78);
-  --warning-foreground: oklch(0.06 0.015 252);
+  /* ── Full reference palette (use via var() in inline styles) ── */
+  --ink:       #0A141C;
+  --ink-2:     #0E1B25;
+  --ink-3:     #13242F;
+  --cream:     #F3EDE1;
+  --cream-dim: #CFC8BA;
+  --muted-tone:#7E8E98;
+  --muted-2:   #5E6E78;
+  --gold:      #E3B04B;
+  --gold-bright:#F4C667;
+  --gold-deep: #A87C2A;
+  --line:      rgba(243,237,225,.10);
+  --line-strong:rgba(243,237,225,.18);
+  --panel:     rgba(243,237,225,.035);
+  --panel-2:   rgba(243,237,225,.055);
+  --status-green: #6FD79B;
+  --status-amber: #EFA64A;
+  --status-red:   #EB6A56;
+  --status-blue:  #5CA8E0;
 }
 
 @theme inline {
@@ -145,30 +168,33 @@
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground; }
 }
 
-/* ── Typography utilities ───────────────────────────────────────────── */
 @layer utilities {
-  .font-display {
-    font-family: var(--font-display);
-  }
+  .font-display { font-family: var(--font-display); }
   .font-mono {
-    font-family: var(--font-mono);
-    font-feature-settings: "tnum" 1; /* tabular numerals */
-  }
-  .tabular {
     font-family: var(--font-mono);
     font-feature-settings: "tnum" 1;
   }
 }
 
-/* ── Film grain overlay ─────────────────────────────────────────────── */
+/* ── Dark: full-bleed atmospheric gradient mesh behind everything ────── */
+.dark body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(70% 55% at 78% -5%, rgba(227,176,75,.16), transparent 60%),
+    radial-gradient(60% 60% at 8% 8%, rgba(92,168,224,.10), transparent 55%),
+    radial-gradient(80% 70% at 50% 120%, rgba(168,124,42,.14), transparent 60%),
+    linear-gradient(160deg, #0A141C 0%, #0C1822 55%, #0A1219 100%);
+}
+
+/* ── Film grain ─────────────────────────────────────────────────────── */
 body::after {
   content: '';
   position: fixed;
@@ -176,9 +202,9 @@ body::after {
   width: 200%;
   height: 200%;
   pointer-events: none;
-  z-index: 9998;
-  opacity: 0.038;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='320' height='320' filter='url(%23g)'/%3E%3C/svg%3E");
+  z-index: -1;
+  opacity: var(--grain-opacity, 0.03);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
   animation: grain 9s steps(12) infinite;
 }
 
@@ -195,30 +221,22 @@ body::after {
   90%     { transform: translate(-9%,9%); }
 }
 
-/* ── Staggered rise-in animation ────────────────────────────────────── */
+/* ── Staggered rise-in ──────────────────────────────────────────────── */
 @keyframes riseIn {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.rise {
-  animation: riseIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
+.rise { animation: riseIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .rise-1  { animation-delay: 0.05s; }
-.rise-2  { animation-delay: 0.10s; }
-.rise-3  { animation-delay: 0.15s; }
-.rise-4  { animation-delay: 0.20s; }
-.rise-5  { animation-delay: 0.25s; }
-.rise-6  { animation-delay: 0.30s; }
-.rise-7  { animation-delay: 0.35s; }
-.rise-8  { animation-delay: 0.40s; }
-.rise-9  { animation-delay: 0.45s; }
-.rise-10 { animation-delay: 0.50s; }
-.rise-11 { animation-delay: 0.55s; }
-.rise-12 { animation-delay: 0.60s; }
+.rise-2  { animation-delay: 0.14s; }
+.rise-3  { animation-delay: 0.23s; }
+.rise-4  { animation-delay: 0.32s; }
+.rise-5  { animation-delay: 0.41s; }
+.rise-6  { animation-delay: 0.50s; }
+.rise-7  { animation-delay: 0.58s; }
+.rise-8  { animation-delay: 0.66s; }
+.rise-9  { animation-delay: 0.74s; }
+.rise-10 { animation-delay: 0.82s; }
+.rise-11 { animation-delay: 0.90s; }
+.rise-12 { animation-delay: 0.98s; }
