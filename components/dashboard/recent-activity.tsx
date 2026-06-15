@@ -1,100 +1,121 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-
 interface ActivityItem {
   id: string
-  user: {
-    name: string
-    avatar?: string
-    initials: string
-  }
+  user: { name: string; initials: string }
   action: string
   detail: string
   time: string
-  badge?: {
-    text: string
-    variant: "default" | "secondary" | "outline"
-  }
+  role: string
 }
 
 const activities: ActivityItem[] = [
-  {
-    id: "1",
-    user: { name: "David Chen", initials: "DC" },
-    action: "New member registration",
-    detail: "Thika Road Zone",
-    time: "2 mins ago",
-    badge: { text: "Member", variant: "default" },
-  },
-  {
-    id: "2",
-    user: { name: "Sarah Johnson", initials: "SJ" },
-    action: "Updated fellowship records",
-    detail: "Kawangware Fellowship",
-    time: "15 mins ago",
-    badge: { text: "Leader", variant: "secondary" },
-  },
-  {
-    id: "3",
-    user: { name: "Mark Thompson", initials: "MT" },
-    action: "Inventory check completed",
-    detail: "Media Department",
-    time: "1 hour ago",
-    badge: { text: "Admin", variant: "outline" },
-  },
-  {
-    id: "4",
-    user: { name: "Grace Williams", initials: "GW" },
-    action: "Attendance report submitted",
-    detail: "Sunday Service",
-    time: "3 hours ago",
-    badge: { text: "Member", variant: "default" },
-  },
+  { id: "1", user: { name: "David Chen", initials: "DC" }, action: "New member registration", detail: "Thika Road Zone", time: "02:14", role: "Member" },
+  { id: "2", user: { name: "Sarah Johnson", initials: "SJ" }, action: "Updated fellowship records", detail: "Kawangware Fellowship", time: "01:52", role: "Leader" },
+  { id: "3", user: { name: "Mark Thompson", initials: "MT" }, action: "Inventory check completed", detail: "Media Department", time: "01:07", role: "Admin" },
+  { id: "4", user: { name: "Grace Williams", initials: "GW" }, action: "Attendance report submitted", detail: "Sunday Service", time: "00:43", role: "Member" },
+  { id: "5", user: { name: "James Odhiambo", initials: "JO" }, action: "New fellowship created", detail: "Eastlands Zone", time: "00:11", role: "Leader" },
 ]
+
+const roleColor: Record<string, string> = {
+  Member: 'oklch(0.52 0.14 60)',
+  Leader: 'oklch(0.60 0.14 200)',
+  Admin: 'oklch(0.72 0.14 78)',
+}
 
 export function RecentActivity() {
   return (
-    <Card className="border shadow-sm">
-      <CardHeader className="flex flex-row items-center justify-between pb-3">
-        <CardTitle className="text-lg font-semibold">Recent Activity</CardTitle>
-        <Button variant="link" className="text-primary p-0 h-auto" asChild>
-          <a href="/activity">View Log</a>
-        </Button>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {activities.map((activity) => (
-          <div key={activity.id} className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={activity.user.avatar} alt={activity.user.name} />
-                <AvatarFallback className="bg-secondary text-secondary-foreground text-xs">
-                  {activity.user.initials}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm">
-                  <span className="font-semibold">{activity.user.name}</span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {activity.action} &bull; {activity.detail}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-primary whitespace-nowrap">{activity.time}</span>
-              {activity.badge && (
-                <Badge variant={activity.badge.variant} className="text-xs">
-                  {activity.badge.text}
-                </Badge>
-              )}
-            </div>
-          </div>
+    <div
+      className="rounded p-5"
+      style={{
+        background: 'oklch(0.12 0.015 252)',
+        border: '1px solid oklch(0.20 0.015 252)',
+        boxShadow: '0 2px 12px oklch(0 0 0 / 0.25)',
+      }}
+    >
+      {/* Header */}
+      <div className="flex items-baseline gap-3 mb-5">
+        <h2
+          className="font-display text-[1.4rem] font-light italic"
+          style={{ color: 'oklch(0.93 0.005 75)' }}
+        >
+          The Ledger
+        </h2>
+        <div
+          className="flex-1 h-px"
+          style={{ background: 'linear-gradient(90deg, oklch(0.72 0.14 78 / 0.2), transparent)' }}
+        />
+        <a
+          href="/activity"
+          className="font-mono text-[9px] uppercase tracking-[0.2em] cursor-pointer hover:opacity-70 transition-opacity"
+          style={{ color: 'oklch(0.72 0.14 78 / 0.6)' }}
+        >
+          View all →
+        </a>
+      </div>
+
+      {/* Table header */}
+      <div
+        className="grid gap-3 py-2 mb-1"
+        style={{
+          gridTemplateColumns: '4rem 1fr 1fr 4rem',
+          borderBottom: '1px solid oklch(0.20 0.015 252)',
+        }}
+      >
+        {["Time", "Name", "Action", "Role"].map((h) => (
+          <span
+            key={h}
+            className="font-mono text-[8px] uppercase tracking-[0.25em]"
+            style={{ color: 'oklch(0.35 0.01 75)' }}
+          >
+            {h}
+          </span>
         ))}
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Rows — staggered rise */}
+      {activities.map((a, i) => (
+        <div
+          key={a.id}
+          className={`grid gap-3 py-3 rise rise-${Math.min(i + 7, 12)}`}
+          style={{
+            gridTemplateColumns: '4rem 1fr 1fr 4rem',
+            borderBottom: '1px solid oklch(0.17 0.015 252)',
+          }}
+        >
+          {/* Time */}
+          <span
+            className="font-mono text-[10px] leading-none self-center"
+            style={{ color: 'oklch(0.40 0.01 75)' }}
+          >
+            {a.time}
+          </span>
+
+          {/* Name */}
+          <span
+            className="text-[12.5px] font-medium leading-none self-center truncate"
+            style={{ color: 'oklch(0.85 0.005 75)' }}
+          >
+            {a.user.name}
+          </span>
+
+          {/* Action */}
+          <span
+            className="text-[11px] leading-none self-center truncate"
+            style={{ color: 'oklch(0.45 0.01 75)' }}
+          >
+            {a.action}
+          </span>
+
+          {/* Role */}
+          <span
+            className="font-mono text-[9px] font-semibold uppercase tracking-wider self-center"
+            style={{ color: roleColor[a.role] ?? 'oklch(0.50 0.01 75)' }}
+          >
+            {a.role}
+          </span>
+        </div>
+      ))}
+    </div>
   )
 }

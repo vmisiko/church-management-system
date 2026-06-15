@@ -133,6 +133,19 @@ import { DeleteDamageReportUseCase } from "@/domain/usecases/inventory/DeleteDam
 import { DamageReportsPloc } from "@/application/inventory/DamageReportsPloc"
 import useDamageReportsState from "@/application/inventory/useDamageReportsState"
 
+import { StockMovementRepository } from "@/data/api/inventory/StockMovementRepository"
+import { GetStockMovementsUseCase } from "@/domain/usecases/inventory/GetStockMovementsUseCase"
+import { StockMovementsPloc } from "@/application/inventory/StockMovementsPloc"
+import useStockMovementsState from "@/application/inventory/useStockMovementsState"
+
+import { ItemRequestRepository } from "@/data/api/inventory/ItemRequestRepository"
+import { GetItemRequestsUseCase } from "@/domain/usecases/inventory/GetItemRequestsUseCase"
+import { CreateItemRequestUseCase } from "@/domain/usecases/inventory/CreateItemRequestUseCase"
+import { UpdateItemRequestStatusUseCase } from "@/domain/usecases/inventory/UpdateItemRequestStatusUseCase"
+import { DeleteItemRequestUseCase } from "@/domain/usecases/inventory/DeleteItemRequestUseCase"
+import { ItemRequestsPloc } from "@/application/inventory/ItemRequestsPloc"
+import useItemRequestsState from "@/application/inventory/useItemRequestsState"
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared CustomAxios — one instance, lazy-initialised.
 // getAuthPloc is a lazy getter so authPlocSingleton is resolved at call time
@@ -401,6 +414,45 @@ export function useInventoryItemsPloc(): InventoryItemsPloc {
       adjustStockUseCase: new AdjustStockUseCase(repo),
     })
     return inventoryItemsPlocSingleton
+  }, [router])
+}
+
+// ── Stock Movements ───────────────────────────────────────────────────────────
+
+let stockMovementsPlocSingleton: StockMovementsPloc | null = null
+
+export function useStockMovementsPloc(): StockMovementsPloc {
+  const router = useRouter()
+  return useMemo(() => {
+    if (stockMovementsPlocSingleton) return stockMovementsPlocSingleton
+    const axios = getSharedAxios(router)
+    const repo = new StockMovementRepository({ axios })
+    stockMovementsPlocSingleton = new StockMovementsPloc({
+      store: useStockMovementsState,
+      getMovementsUseCase: new GetStockMovementsUseCase(repo),
+    })
+    return stockMovementsPlocSingleton
+  }, [router])
+}
+
+// ── Item Requests ─────────────────────────────────────────────────────────────
+
+let itemRequestsPlocSingleton: ItemRequestsPloc | null = null
+
+export function useItemRequestsPloc(): ItemRequestsPloc {
+  const router = useRouter()
+  return useMemo(() => {
+    if (itemRequestsPlocSingleton) return itemRequestsPlocSingleton
+    const axios = getSharedAxios(router)
+    const repo = new ItemRequestRepository({ axios })
+    itemRequestsPlocSingleton = new ItemRequestsPloc({
+      store: useItemRequestsState,
+      getRequestsUseCase: new GetItemRequestsUseCase(repo),
+      createRequestUseCase: new CreateItemRequestUseCase(repo),
+      updateStatusUseCase: new UpdateItemRequestStatusUseCase(repo),
+      deleteRequestUseCase: new DeleteItemRequestUseCase(repo),
+    })
+    return itemRequestsPlocSingleton
   }, [router])
 }
 

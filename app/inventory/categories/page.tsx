@@ -34,6 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
+import { cn } from "@/lib/utils"
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, Search, Edit, Trash2, MoreHorizontal, Boxes, Package } from "lucide-react"
 import {
@@ -42,13 +43,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { ChevronsUpDown, Check } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   useInventoryCategoriesPloc,
   useInventoryItemsPloc,
+  useMembersPloc,
 } from "@/core/di/DependencyLocator"
 import useInventoryCategoriesState from "@/application/inventory/useInventoryCategoriesState"
 import useInventoryItemsState from "@/application/inventory/useInventoryItemsState"
+import useMembersState from "@/application/member/useMembersState"
 import type { InventoryCategory } from "@/domain/entities/inventory/InventoryCategory"
 
 function getInitials(name: string | null): string {
@@ -56,32 +62,45 @@ function getInitials(name: string | null): string {
   return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
 }
 
-const EMPTY_FORM = { name: "", leaderName: "", description: "" }
+const EMPTY_FORM = { name: "", leaderId: "", description: "" }
 
 export default function CategoriesPage() {
   const categoriesPloc = useInventoryCategoriesPloc()
   const itemsPloc = useInventoryItemsPloc()
+  const membersPloc = useMembersPloc()
 
   const categories = useInventoryCategoriesState((s) => s.categories)
   const loading = useInventoryCategoriesState((s) => s.loading)
   const submitting = useInventoryCategoriesState((s) => s.submitting)
   const items = useInventoryItemsState((s) => s.items)
+  const members = useMembersState((s) => s.members)
 
   const [searchQuery, setSearchQuery] = useState("")
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<InventoryCategory | null>(null)
   const [deletingCategory, setDeletingCategory] = useState<InventoryCategory | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [leaderPopoverOpen, setLeaderPopoverOpen] = useState(false)
 
   useEffect(() => {
     categoriesPloc.fetchAll()
     itemsPloc.fetchAll()
-  }, [categoriesPloc, itemsPloc])
+    membersPloc.fetchAll()
+  }, [categoriesPloc, itemsPloc, membersPloc])
 
-  const filteredCategories = categories.filter((cat) =>
-    cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (cat.leaderName ?? "").toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  const getMemberName = (id: string | null) => {
+    if (!id) return null
+    const m = members.find((m) => m.id === id)
+    return m ? `${m.firstName} ${m.lastName}` : null
+  }
+
+  const filteredCategories = categories.filter((cat) => {
+    const leaderName = getMemberName(cat.leaderId) ?? ""
+    return (
+      cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      leaderName.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  })
 
   const totalItems = items.length
 
@@ -89,7 +108,7 @@ export default function CategoriesPage() {
     e.preventDefault()
     const ok = await categoriesPloc.create({
       name: form.name,
-      leaderName: form.leaderName || undefined,
+      leaderId: form.leaderId || null,
     })
     if (ok) {
       setForm(EMPTY_FORM)
@@ -99,7 +118,7 @@ export default function CategoriesPage() {
 
   const openEdit = (cat: InventoryCategory) => {
     setEditingCategory(cat)
-    setForm({ name: cat.name, leaderName: cat.leaderName ?? "", description: "" })
+    setForm({ name: cat.name, leaderId: cat.leaderId ?? "", description: "" })
   }
 
   const handleEdit = async (e: React.FormEvent) => {
@@ -107,7 +126,7 @@ export default function CategoriesPage() {
     if (!editingCategory) return
     const ok = await categoriesPloc.update(editingCategory.id, {
       name: form.name,
-      leaderName: form.leaderName || null,
+      leaderId: form.leaderId || null,
     })
     if (ok) {
       setEditingCategory(null)
@@ -212,18 +231,21 @@ export default function CategoriesPage() {
                         <TableRow key={category.id}>
                           <TableCell className="font-medium">{category.name}</TableCell>
                           <TableCell>
-                            {category.leaderName ? (
-                              <div className="flex items-center gap-2">
-                                <Avatar className="h-7 w-7">
-                                  <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                                    {getInitials(category.leaderName)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <span className="text-sm">{category.leaderName}</span>
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">—</span>
-                            )}
+                            {(() => {
+                              const name = getMemberName(category.leaderId)
+                              return name ? (
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-7 w-7">
+                                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                                      {getInitials(name)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-sm">{name}</span>
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">—</span>
+                              )
+                            })()}
                           </TableCell>
                           <TableCell>
                             <Badge className="bg-primary/10 text-primary border-primary/20">
@@ -297,13 +319,41 @@ export default function CategoriesPage() {
                 </FieldGroup>
                 <FieldGroup>
                   <Field>
-                    <FieldLabel htmlFor="leader">Category Leader</FieldLabel>
-                    <Input
-                      id="leader"
-                      placeholder="Leader name"
-                      value={form.leaderName}
-                      onChange={(e) => setForm((f) => ({ ...f, leaderName: e.target.value }))}
-                    />
+                    <FieldLabel>Category Leader</FieldLabel>
+                    <Popover open={leaderPopoverOpen} onOpenChange={setLeaderPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                          {form.leaderId
+                            ? (() => { const m = members.find((m) => m.id === form.leaderId); return m ? `${m.firstName} ${m.lastName}` : "Select a member" })()
+                            : "Select a member"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search members..." />
+                          <CommandList>
+                            <CommandEmpty>No member found.</CommandEmpty>
+                            <CommandGroup>
+                              <CommandItem value="none" onSelect={() => { setForm((f) => ({ ...f, leaderId: "" })); setLeaderPopoverOpen(false) }}>
+                                <Check className={cn("mr-2 h-4 w-4", !form.leaderId ? "opacity-100" : "opacity-0")} />
+                                No leader
+                              </CommandItem>
+                              {members.map((m) => (
+                                <CommandItem
+                                  key={m.id}
+                                  value={`${m.firstName} ${m.lastName}`}
+                                  onSelect={() => { setForm((f) => ({ ...f, leaderId: m.id })); setLeaderPopoverOpen(false) }}
+                                >
+                                  <Check className={cn("mr-2 h-4 w-4", form.leaderId === m.id ? "opacity-100" : "opacity-0")} />
+                                  {m.firstName} {m.lastName}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </Field>
                 </FieldGroup>
               </div>
@@ -339,12 +389,41 @@ export default function CategoriesPage() {
                 </FieldGroup>
                 <FieldGroup>
                   <Field>
-                    <FieldLabel htmlFor="editLeader">Category Leader</FieldLabel>
-                    <Input
-                      id="editLeader"
-                      value={form.leaderName}
-                      onChange={(e) => setForm((f) => ({ ...f, leaderName: e.target.value }))}
-                    />
+                    <FieldLabel>Category Leader</FieldLabel>
+                    <Popover open={leaderPopoverOpen} onOpenChange={setLeaderPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                          {form.leaderId
+                            ? (() => { const m = members.find((m) => m.id === form.leaderId); return m ? `${m.firstName} ${m.lastName}` : "Select a member" })()
+                            : "Select a member"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search members..." />
+                          <CommandList>
+                            <CommandEmpty>No member found.</CommandEmpty>
+                            <CommandGroup>
+                              <CommandItem value="none" onSelect={() => { setForm((f) => ({ ...f, leaderId: "" })); setLeaderPopoverOpen(false) }}>
+                                <Check className={cn("mr-2 h-4 w-4", !form.leaderId ? "opacity-100" : "opacity-0")} />
+                                No leader
+                              </CommandItem>
+                              {members.map((m) => (
+                                <CommandItem
+                                  key={m.id}
+                                  value={`${m.firstName} ${m.lastName}`}
+                                  onSelect={() => { setForm((f) => ({ ...f, leaderId: m.id })); setLeaderPopoverOpen(false) }}
+                                >
+                                  <Check className={cn("mr-2 h-4 w-4", form.leaderId === m.id ? "opacity-100" : "opacity-0")} />
+                                  {m.firstName} {m.lastName}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </Field>
                 </FieldGroup>
               </div>

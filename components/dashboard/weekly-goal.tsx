@@ -1,8 +1,5 @@
 "use client"
 
-import { Card, CardContent } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-
 interface WeeklyGoalProps {
   goal: string
   target: number
@@ -10,23 +7,71 @@ interface WeeklyGoalProps {
 }
 
 export function WeeklyGoal({ goal, target, current }: WeeklyGoalProps) {
-  const percentage = Math.round((current / target) * 100)
+  const pct = Math.round((current / target) * 100)
 
   return (
-    <Card className="border-0 bg-accent text-accent-foreground shadow-sm">
-      <CardContent className="p-5">
-        <h3 className="text-lg font-semibold italic">Weekly Goal</h3>
-        <p className="text-sm font-medium uppercase tracking-wider mt-1">
-          {percentage}% Reached
+    <div
+      className="relative overflow-hidden rounded p-5"
+      style={{
+        background: 'oklch(0.12 0.015 252)',
+        border: '1px solid oklch(0.72 0.14 78 / 0.18)',
+        boxShadow: '0 0 30px oklch(0.72 0.14 78 / 0.06)',
+      }}
+    >
+      {/* Embossed ring */}
+      <div
+        className="pointer-events-none absolute -right-10 -bottom-10 h-44 w-44 rounded-full"
+        style={{
+          border: '1px solid oklch(0.72 0.14 78 / 0.06)',
+          boxShadow: 'inset 0 0 0 16px oklch(0.72 0.14 78 / 0.025)',
+        }}
+      />
+
+      <div className="relative">
+        <p
+          className="font-mono text-[8px] uppercase tracking-[0.28em]"
+          style={{ color: 'oklch(0.72 0.14 78 / 0.50)' }}
+        >
+          Weekly Goal
         </p>
-        <Progress
-          value={percentage}
-          className="mt-3 h-2 bg-accent-foreground/20"
-        />
-        <p className="mt-3 text-sm">
+
+        <p
+          className="font-display font-light italic mt-1 leading-none"
+          style={{ fontSize: '3rem', color: 'oklch(0.72 0.14 78)' }}
+        >
+          {pct}
+          <span className="text-2xl opacity-50">%</span>
+        </p>
+
+        {/* Track */}
+        <div
+          className="mt-3 h-px w-full overflow-hidden rounded-full"
+          style={{ background: 'oklch(0.72 0.14 78 / 0.12)' }}
+        >
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${pct}%`,
+              background: 'linear-gradient(90deg, oklch(0.60 0.14 78), oklch(0.78 0.14 78))',
+              boxShadow: '0 0 8px oklch(0.72 0.14 78 / 0.5)',
+            }}
+          />
+        </div>
+
+        <p
+          className="mt-3 text-[11.5px] leading-relaxed"
+          style={{ color: 'oklch(0.42 0.01 75)' }}
+        >
           {goal}
         </p>
-      </CardContent>
-    </Card>
+
+        <p
+          className="mt-2 font-mono text-[9px] uppercase tracking-widest"
+          style={{ color: 'oklch(0.72 0.14 78 / 0.55)' }}
+        >
+          {current} / {target} reached
+        </p>
+      </div>
+    </div>
   )
 }

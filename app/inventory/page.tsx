@@ -65,31 +65,13 @@ import {
 import {
   useInventoryItemsPloc,
   useInventoryCategoriesPloc,
+  useItemRequestsPloc,
 } from "@/core/di/DependencyLocator"
 import useInventoryItemsState from "@/application/inventory/useInventoryItemsState"
 import useInventoryCategoriesState from "@/application/inventory/useInventoryCategoriesState"
+import useItemRequestsState from "@/application/inventory/useItemRequestsState"
 import type { InventoryItem, ItemCondition } from "@/domain/entities/inventory/InventoryItem"
 import type { InventoryCategory } from "@/domain/entities/inventory/InventoryCategory"
-
-// ItemRequest has no domain entity yet — managed as local state
-interface ItemRequest {
-  id: string
-  requester: string
-  requesterAvatar: string
-  item: string
-  quantity: number
-  requestDate: string
-  returnDate: string
-  status: "pending" | "approved" | "rejected" | "returned"
-}
-
-const SEED_REQUESTS: ItemRequest[] = [
-  { id: "1", requester: "Youth Fellowship", requesterAvatar: "YF", item: "Folding Chairs", quantity: 20, requestDate: "2024-03-18", returnDate: "2024-03-20", status: "pending" },
-  { id: "2", requester: "Women Ministry", requesterAvatar: "WM", item: "Wireless Microphones", quantity: 2, requestDate: "2024-03-17", returnDate: "2024-03-17", status: "approved" },
-  { id: "3", requester: "Children Church", requesterAvatar: "CC", item: "Sunday School Materials", quantity: 30, requestDate: "2024-03-15", returnDate: "2024-03-22", status: "approved" },
-  { id: "4", requester: "Choir Ministry", requesterAvatar: "CM", item: "Hymn Books", quantity: 50, requestDate: "2024-03-14", returnDate: "2024-03-21", status: "returned" },
-  { id: "5", requester: "Ushers Ministry", requesterAvatar: "UM", item: "First Aid Kits", quantity: 1, requestDate: "2024-03-12", returnDate: "2024-03-12", status: "rejected" },
-]
 
 const conditionStyles: Record<ItemCondition, string> = {
   excellent: "bg-success/20 text-success border-success/30",
@@ -98,7 +80,7 @@ const conditionStyles: Record<ItemCondition, string> = {
   poor: "bg-destructive/20 text-destructive border-destructive/30",
 }
 
-const requestStatusStyles: Record<ItemRequest["status"], string> = {
+const requestStatusStyles: Record<string, string> = {
   pending: "bg-warning/20 text-warning border-warning/30",
   approved: "bg-success/20 text-success border-success/30",
   rejected: "bg-destructive/20 text-destructive border-destructive/30",
@@ -107,22 +89,25 @@ const requestStatusStyles: Record<ItemRequest["status"], string> = {
 
 const EMPTY_ITEM_FORM = { name: "", code: "", categoryId: "", totalQty: 0, condition: "good" as ItemCondition }
 const EMPTY_CAT_FORM = { name: "", leaderName: "" }
-const EMPTY_REQ_FORM = { requester: "", itemId: "", quantity: 1, returnDate: "", reason: "" }
+const EMPTY_REQ_FORM = { requester: "", itemId: "", quantity: 1, requestDate: new Date().toISOString().split("T")[0], returnDate: "", reason: "" }
 
 export default function InventoryPage() {
   const itemsPloc = useInventoryItemsPloc()
   const categoriesPloc = useInventoryCategoriesPloc()
+  const requestsPloc = useItemRequestsPloc()
 
   const items = useInventoryItemsState((s) => s.items)
   const categories = useInventoryCategoriesState((s) => s.categories)
+  const requests = useItemRequestsState((s) => s.requests)
   const itemsLoading = useInventoryItemsState((s) => s.loading)
+  const requestsLoading = useItemRequestsState((s) => s.loading)
   const itemsSubmitting = useInventoryItemsState((s) => s.submitting)
   const categoriesSubmitting = useInventoryCategoriesState((s) => s.submitting)
+  const requestsSubmitting = useItemRequestsState((s) => s.submitting)
 
   const [activeTab, setActiveTab] = useState("items")
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
-  const [requests, setRequests] = useState<ItemRequest[]>(SEED_REQUESTS)
 
   // Dialog states
   const [isAddItemOpen, setIsAddItemOpen] = useState(false)
@@ -132,6 +117,7 @@ export default function InventoryPage() {
   const [deletingItem, setDeletingItem] = useState<InventoryItem | null>(null)
   const [editingCategory, setEditingCategory] = useState<InventoryCategory | null>(null)
   const [deletingCategory, setDeletingCategory] = useState<InventoryCategory | null>(null)
+  const [deletingRequestId, setDeletingRequestId] = useState<string | null>(null)
 
   // Form states
   const [itemForm, setItemForm] = useState(EMPTY_ITEM_FORM)
@@ -141,7 +127,8 @@ export default function InventoryPage() {
   useEffect(() => {
     itemsPloc.fetchAll()
     categoriesPloc.fetchAll()
-  }, [itemsPloc, categoriesPloc])
+    requestsPloc.fetchAll()
+  }, [itemsPloc, categoriesPloc, requestsPloc])
 
   const getCategoryName = (categoryId: string) =>
     categories.find((c) => c.id === categoryId)?.name ?? "—"
@@ -186,6 +173,7 @@ export default function InventoryPage() {
       name: itemForm.name,
       code: itemForm.code,
       categoryId: itemForm.categoryId,
+      totalQty: itemForm.totalQty,
       condition: itemForm.condition,
     })
     if (ok) {
@@ -238,34 +226,32 @@ export default function InventoryPage() {
     setDeletingCategory(null)
   }
 
-  // ── Request handlers (local state only — no domain entity yet) ─────────────
+  // ── Request handlers ───────────────────────────────────────────────────────
 
-  const handleApprove = (id: string) =>
-    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "approved" as const } : r))
+  const handleApprove = (id: string) => requestsPloc.updateStatus(id, "approved")
+  const handleReject = (id: string) => requestsPloc.updateStatus(id, "rejected")
+  const handleMarkReturned = (id: string) => requestsPloc.updateStatus(id, "returned")
 
-  const handleReject = (id: string) =>
-    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "rejected" as const } : r))
+  const handleDeleteRequest = async () => {
+    if (!deletingRequestId) return
+    await requestsPloc.delete(deletingRequestId)
+    setDeletingRequestId(null)
+  }
 
-  const handleMarkReturned = (id: string) =>
-    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "returned" as const } : r))
-
-  const handleSubmitRequest = (e: React.FormEvent) => {
+  const handleSubmitRequest = async (e: React.FormEvent) => {
     e.preventDefault()
-    const selectedItem = items.find((i) => i.id === reqForm.itemId)
-    if (!selectedItem) return
-    const newReq: ItemRequest = {
-      id: String(Date.now()),
+    const ok = await requestsPloc.create({
       requester: reqForm.requester,
-      requesterAvatar: reqForm.requester.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2),
-      item: selectedItem.name,
+      itemId: reqForm.itemId,
       quantity: reqForm.quantity,
-      requestDate: new Date().toISOString().split("T")[0],
+      requestDate: reqForm.requestDate,
       returnDate: reqForm.returnDate,
-      status: "pending",
+      reason: reqForm.reason || undefined,
+    })
+    if (ok) {
+      setReqForm(EMPTY_REQ_FORM)
+      setIsRequestItemOpen(false)
     }
-    setRequests((prev) => [newReq, ...prev])
-    setReqForm(EMPTY_REQ_FORM)
-    setIsRequestItemOpen(false)
   }
 
   return (
@@ -328,7 +314,11 @@ export default function InventoryPage() {
                 <ClipboardList className="h-6 w-6 text-chart-3" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{pendingRequests.length}</p>
+                {requestsLoading ? (
+                  <Skeleton className="h-7 w-12 mb-1" />
+                ) : (
+                  <p className="text-2xl font-bold">{pendingRequests.length}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Pending Requests</p>
               </div>
             </CardContent>
@@ -340,7 +330,6 @@ export default function InventoryPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <TabsList>
               <TabsTrigger value="items">Items</TabsTrigger>
-              <TabsTrigger value="categories">Categories</TabsTrigger>
               <TabsTrigger value="requests">Requests</TabsTrigger>
             </TabsList>
             <div className="flex gap-2">
@@ -350,14 +339,8 @@ export default function InventoryPage() {
                   Add Item
                 </Button>
               )}
-              {activeTab === "categories" && (
-                <Button onClick={() => { setCatForm(EMPTY_CAT_FORM); setIsAddCategoryOpen(true) }} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Category
-                </Button>
-              )}
               {activeTab === "requests" && (
-                <Button onClick={() => setIsRequestItemOpen(true)} className="gap-2">
+                <Button onClick={() => { setReqForm(EMPTY_REQ_FORM); setIsRequestItemOpen(true) }} className="gap-2">
                   <Plus className="h-4 w-4" />
                   Request Item
                 </Button>
@@ -475,144 +458,106 @@ export default function InventoryPage() {
             </Card>
           </TabsContent>
 
-          {/* Categories Tab */}
-          <TabsContent value="categories" className="mt-0">
-            <Card className="border shadow-sm">
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="font-semibold">Name</TableHead>
-                      <TableHead className="font-semibold">Leader</TableHead>
-                      <TableHead className="font-semibold">Items</TableHead>
-                      <TableHead className="font-semibold text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {categories.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                          No categories found
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      categories.map((category) => {
-                        const itemCount = items.filter((i) => i.categoryId === category.id).length
-                        return (
-                          <TableRow key={category.id}>
-                            <TableCell className="font-medium">{category.name}</TableCell>
-                            <TableCell>{category.leaderName ?? "—"}</TableCell>
-                            <TableCell>{itemCount}</TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => openEditCategory(category)}>
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit Category
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-destructive"
-                                    onClick={() => setDeletingCategory(category)}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           {/* Requests Tab */}
           <TabsContent value="requests" className="mt-0">
             <Card className="border shadow-sm">
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="font-semibold">Requester</TableHead>
-                      <TableHead className="font-semibold">Item</TableHead>
-                      <TableHead className="font-semibold">Quantity</TableHead>
-                      <TableHead className="font-semibold">Request Date</TableHead>
-                      <TableHead className="font-semibold">Return Date</TableHead>
-                      <TableHead className="font-semibold">Status</TableHead>
-                      <TableHead className="font-semibold text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {requests.map((request) => (
-                      <TableRow key={request.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold">
-                              {request.requesterAvatar}
-                            </div>
-                            <span className="font-medium">{request.requester}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{request.item}</TableCell>
-                        <TableCell>{request.quantity}</TableCell>
-                        <TableCell>{request.requestDate}</TableCell>
-                        <TableCell>{request.returnDate}</TableCell>
-                        <TableCell>
-                          <Badge className={requestStatusStyles[request.status]}>
-                            {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {request.status === "pending" ? (
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0 text-success hover:bg-success/10"
-                                onClick={() => handleApprove(request.id)}
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
-                                onClick={() => handleReject(request.id)}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem>View Details</DropdownMenuItem>
-                                {request.status === "approved" && (
-                                  <DropdownMenuItem onClick={() => handleMarkReturned(request.id)}>
-                                    Mark as Returned
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </TableCell>
-                      </TableRow>
+                {requestsLoading && requests.length === 0 ? (
+                  <div className="p-4 space-y-3">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Skeleton key={i} className="h-10 w-full rounded" />
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold">Requester</TableHead>
+                        <TableHead className="font-semibold">Item</TableHead>
+                        <TableHead className="font-semibold">Quantity</TableHead>
+                        <TableHead className="font-semibold">Request Date</TableHead>
+                        <TableHead className="font-semibold">Return Date</TableHead>
+                        <TableHead className="font-semibold">Status</TableHead>
+                        <TableHead className="font-semibold text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {requests.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                            No requests yet
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        requests.map((request) => (
+                          <TableRow key={request.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                                  {request.requesterAvatar}
+                                </div>
+                                <span className="font-medium">{request.requester}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>{request.itemName}</TableCell>
+                            <TableCell>{request.quantity}</TableCell>
+                            <TableCell>{request.requestDate}</TableCell>
+                            <TableCell>{request.returnDate}</TableCell>
+                            <TableCell>
+                              <Badge className={requestStatusStyles[request.status]}>
+                                {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {request.status === "pending" ? (
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0 text-success hover:bg-success/10"
+                                    onClick={() => handleApprove(request.id)}
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+                                    onClick={() => handleReject(request.id)}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    {request.status === "approved" && (
+                                      <DropdownMenuItem onClick={() => handleMarkReturned(request.id)}>
+                                        Mark as Returned
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem
+                                      className="text-destructive"
+                                      onClick={() => setDeletingRequestId(request.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -768,25 +713,40 @@ export default function InventoryPage() {
                     </Field>
                   </FieldGroup>
                 </div>
-                <FieldGroup>
-                  <Field>
-                    <FieldLabel>Condition</FieldLabel>
-                    <Select
-                      value={itemForm.condition}
-                      onValueChange={(v) => setItemForm((f) => ({ ...f, condition: v as ItemCondition }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="excellent">Excellent</SelectItem>
-                        <SelectItem value="good">Good</SelectItem>
-                        <SelectItem value="fair">Fair</SelectItem>
-                        <SelectItem value="poor">Poor</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                </FieldGroup>
+                <div className="grid grid-cols-2 gap-4">
+                  <FieldGroup>
+                    <Field>
+                      <FieldLabel htmlFor="editTotalQty">Total Quantity</FieldLabel>
+                      <Input
+                        id="editTotalQty"
+                        type="number"
+                        min={0}
+                        value={itemForm.totalQty}
+                        onChange={(e) => setItemForm((f) => ({ ...f, totalQty: Number(e.target.value) }))}
+                        required
+                      />
+                    </Field>
+                  </FieldGroup>
+                  <FieldGroup>
+                    <Field>
+                      <FieldLabel>Condition</FieldLabel>
+                      <Select
+                        value={itemForm.condition}
+                        onValueChange={(v) => setItemForm((f) => ({ ...f, condition: v as ItemCondition }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="excellent">Excellent</SelectItem>
+                          <SelectItem value="good">Good</SelectItem>
+                          <SelectItem value="fair">Fair</SelectItem>
+                          <SelectItem value="poor">Poor</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  </FieldGroup>
+                </div>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setEditingItem(null)}>Cancel</Button>
@@ -939,6 +899,18 @@ export default function InventoryPage() {
                 </FieldGroup>
                 <FieldGroup>
                   <Field>
+                    <FieldLabel htmlFor="requestDate">Request Date</FieldLabel>
+                    <Input
+                      id="requestDate"
+                      type="date"
+                      value={reqForm.requestDate}
+                      onChange={(e) => setReqForm((f) => ({ ...f, requestDate: e.target.value }))}
+                      required
+                    />
+                  </Field>
+                </FieldGroup>
+                <FieldGroup>
+                  <Field>
                     <FieldLabel htmlFor="returnDate">Return Date</FieldLabel>
                     <Input
                       id="returnDate"
@@ -964,7 +936,9 @@ export default function InventoryPage() {
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsRequestItemOpen(false)}>Cancel</Button>
-                <Button type="submit">Submit Request</Button>
+                <Button type="submit" disabled={requestsSubmitting}>
+                  {requestsSubmitting ? "Submitting…" : "Submit Request"}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -1005,6 +979,27 @@ export default function InventoryPage() {
               <AlertDialogAction
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={handleDeleteCategory}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Delete Request Confirmation */}
+        <AlertDialog open={!!deletingRequestId} onOpenChange={(open) => { if (!open) setDeletingRequestId(null) }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Request</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this request? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={handleDeleteRequest}
               >
                 Delete
               </AlertDialogAction>

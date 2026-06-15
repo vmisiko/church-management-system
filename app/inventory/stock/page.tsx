@@ -43,9 +43,10 @@ import {
   RefreshCw,
   History,
 } from "lucide-react"
-import { useInventoryItemsPloc, useInventoryCategoriesPloc } from "@/core/di/DependencyLocator"
+import { useInventoryItemsPloc, useInventoryCategoriesPloc, useStockMovementsPloc } from "@/core/di/DependencyLocator"
 import useInventoryItemsState from "@/application/inventory/useInventoryItemsState"
 import useInventoryCategoriesState from "@/application/inventory/useInventoryCategoriesState"
+import useStockMovementsState from "@/application/inventory/useStockMovementsState"
 import type { InventoryItem } from "@/domain/entities/inventory/InventoryItem"
 
 type StockStatus = "healthy" | "low" | "critical" | "out"
@@ -72,26 +73,9 @@ const statusLabels: Record<StockStatus, string> = {
   out: "Out of Stock",
 }
 
-// Stock movements have no domain entity yet — kept as static seed data
-interface StockMovement {
-  id: string
-  itemName: string
-  type: "in" | "out" | "adjustment"
-  quantity: number
-  reason: string
-  performedBy: string
-  date: string
-}
+type StockMovementType = "in" | "out" | "adjustment"
 
-const SEED_MOVEMENTS: StockMovement[] = [
-  { id: "1", itemName: "Communion Cups", type: "in", quantity: 200, reason: "Monthly restock", performedBy: "Admin", date: "2024-03-18" },
-  { id: "2", itemName: "Hymn Books", type: "out", quantity: 50, reason: "Youth Fellowship request", performedBy: "John O.", date: "2024-03-17" },
-  { id: "3", itemName: "Folding Chairs", type: "out", quantity: 20, reason: "Women Ministry event", performedBy: "Grace W.", date: "2024-03-16" },
-  { id: "4", itemName: "Sunday School Materials", type: "in", quantity: 50, reason: "Quarterly supplies", performedBy: "Sarah M.", date: "2024-03-15" },
-  { id: "5", itemName: "Wireless Microphones", type: "adjustment", quantity: -2, reason: "Inventory count correction", performedBy: "Admin", date: "2024-03-14" },
-]
-
-const movementTypeStyles: Record<StockMovement["type"], string> = {
+const movementTypeStyles: Record<StockMovementType, string> = {
   in: "bg-success/20 text-success",
   out: "bg-destructive/20 text-destructive",
   adjustment: "bg-warning/20 text-warning",
@@ -102,22 +86,25 @@ const EMPTY_RESTOCK_FORM = { itemId: "", quantity: 1, reason: "" }
 export default function StockPage() {
   const itemsPloc = useInventoryItemsPloc()
   const categoriesPloc = useInventoryCategoriesPloc()
+  const movementsPloc = useStockMovementsPloc()
 
   const items = useInventoryItemsState((s) => s.items)
   const categories = useInventoryCategoriesState((s) => s.categories)
   const loading = useInventoryItemsState((s) => s.loading)
   const submitting = useInventoryItemsState((s) => s.submitting)
+  const movements = useStockMovementsState((s) => s.movements)
+  const movementsLoading = useStockMovementsState((s) => s.loading)
 
   const [isRestockOpen, setIsRestockOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [restockForm, setRestockForm] = useState(EMPTY_RESTOCK_FORM)
-  const [movements, setMovements] = useState<StockMovement[]>(SEED_MOVEMENTS)
 
   useEffect(() => {
     itemsPloc.fetchAll()
     categoriesPloc.fetchAll()
-  }, [itemsPloc, categoriesPloc])
+    movementsPloc.fetchAll()
+  }, [itemsPloc, categoriesPloc, movementsPloc])
 
   const getCategoryName = (categoryId: string) =>
     categories.find((c) => c.id === categoryId)?.name ?? "—"
@@ -138,25 +125,12 @@ export default function StockPage() {
 
   const handleRestock = async (e: React.FormEvent) => {
     e.preventDefault()
-    const item = items.find((i) => i.id === restockForm.itemId)
-    if (!item) return
     const ok = await itemsPloc.adjustStock(restockForm.itemId, {
       adjustment: restockForm.quantity,
       reason: restockForm.reason || "Restock",
     })
     if (ok) {
-      setMovements((prev) => [
-        {
-          id: String(Date.now()),
-          itemName: item.name,
-          type: "in",
-          quantity: restockForm.quantity,
-          reason: restockForm.reason || "Restock",
-          performedBy: "Admin",
-          date: new Date().toISOString().split("T")[0],
-        },
-        ...prev,
-      ])
+      await movementsPloc.fetchAll()
       setRestockForm(EMPTY_RESTOCK_FORM)
       setIsRestockOpen(false)
     }
@@ -342,22 +316,34 @@ export default function StockPage() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y">
-                  {movements.map((movement) => (
-                    <div key={movement.id} className="px-4 py-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium text-sm">{movement.itemName}</span>
-                        <Badge className={movementTypeStyles[movement.type]}>
-                          {movement.type === "in" ? "+" : movement.type === "out" ? "−" : ""}
-                          {Math.abs(movement.quantity)}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground">{movement.reason}</p>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="text-xs text-muted-foreground">{movement.performedBy}</span>
-                        <span className="text-xs text-muted-foreground">{movement.date}</span>
-                      </div>
+                  {movementsLoading && movements.length === 0 ? (
+                    <div className="p-4 space-y-3">
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <Skeleton key={i} className="h-14 w-full rounded" />
+                      ))}
                     </div>
-                  ))}
+                  ) : movements.length === 0 ? (
+                    <p className="px-4 py-8 text-center text-sm text-muted-foreground">No movements yet</p>
+                  ) : (
+                    movements.map((movement) => (
+                      <div key={movement.id} className="px-4 py-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-sm">{movement.itemName}</span>
+                          <Badge className={movementTypeStyles[movement.type]}>
+                            {movement.type === "in" ? "+" : movement.type === "out" ? "−" : ""}
+                            {Math.abs(movement.quantity)}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{movement.reason ?? "—"}</p>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-xs text-muted-foreground">{movement.performedBy}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(movement.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -2,7 +2,7 @@ export interface InventoryCategory {
   id: string
   name: string
   departmentId: string | null
-  leaderName: string | null
+  leaderId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -10,11 +10,11 @@ export interface InventoryCategory {
 export interface CreateCategoryRequest {
   name: string
   departmentId?: string
-  leaderName?: string
+  leaderId?: string | null
 }
 
 export interface UpdateCategoryRequest {
   name?: string
   departmentId?: string | null
-  leaderName?: string | null
+  leaderId?: string | null
 }

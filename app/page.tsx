@@ -5,45 +5,33 @@ import { PriorityAlerts } from "@/components/dashboard/priority-alerts"
 import { WeeklyGoal } from "@/components/dashboard/weekly-goal"
 import { RecentActivity } from "@/components/dashboard/recent-activity"
 import { AttendanceTrends } from "@/components/dashboard/attendance-trends"
-import { Button } from "@/components/ui/button"
-import { FileText, Video } from "lucide-react"
+import { DashboardGreeting } from "@/components/dashboard/dashboard-greeting"
 
 export default function DashboardPage() {
   return (
     <AppShell>
-      <div className="p-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold">Dashboard</h1>
-            <p className="text-muted-foreground">
-              Welcome back, Pastor. Here&apos;s what&apos;s happening today.
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <Button variant="outline" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Generate Report
-            </Button>
-            <Button className="gap-2 bg-primary text-primary-foreground">
-              <Video className="h-4 w-4" />
-              Live Streaming
-            </Button>
-          </div>
+      <div className="px-7 py-6 max-w-[1440px] mx-auto space-y-7">
+
+        {/* ── Oversized greeting ── */}
+        <DashboardGreeting />
+
+        {/* ── Divider ── */}
+        <div
+          className="rise rise-4 h-px w-full"
+          style={{ background: 'linear-gradient(90deg, oklch(0.72 0.14 78 / 0.3), oklch(0.72 0.14 78 / 0.05) 70%, transparent)' }}
+        />
+
+        {/* ── Numbered vault cards ── */}
+        <div className="rise rise-5">
+          <KpiCardsGrid />
         </div>
 
-        {/* KPI Cards */}
-        <KpiCardsGrid />
-
-        {/* Charts and Alerts Row */}
-        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Membership Chart - Takes 2 columns */}
+        {/* ── Analytics row ── */}
+        <div className="rise rise-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <MembershipChart />
           </div>
-
-          {/* Right Column - Alerts and Goal */}
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-5">
             <PriorityAlerts />
             <WeeklyGoal
               goal="Add 30 new members to Lang'ata Fellowship."
@@ -53,11 +41,13 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Bottom Row */}
-        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* ── Bottom row ── */}
+        <div className="rise rise-7 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <AttendanceTrends />
           <RecentActivity />
         </div>
+
+        <div className="h-4" />
       </div>
     </AppShell>
   )
