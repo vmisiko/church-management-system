@@ -40,7 +40,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${hanken.variable} ${jetbrains.variable}`}>
+    <html lang="en" className={`${fraunces.variable} ${hanken.variable} ${jetbrains.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased">
         <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
           {children}
