@@ -146,6 +146,15 @@ import { DeleteItemRequestUseCase } from "@/domain/usecases/inventory/DeleteItem
 import { ItemRequestsPloc } from "@/application/inventory/ItemRequestsPloc"
 import useItemRequestsState from "@/application/inventory/useItemRequestsState"
 
+// ── Follow-ups ───────────────────────────────────────────────────────────────
+import { FollowUpRepository } from "@/data/api/follow-up/FollowUpRepository"
+import { GetFollowUpsUseCase } from "@/domain/usecases/follow-up/GetFollowUpsUseCase"
+import { CreateFollowUpUseCase } from "@/domain/usecases/follow-up/CreateFollowUpUseCase"
+import { UpdateFollowUpUseCase } from "@/domain/usecases/follow-up/UpdateFollowUpUseCase"
+import { RecordFollowUpAttemptUseCase } from "@/domain/usecases/follow-up/RecordFollowUpAttemptUseCase"
+import { FollowUpsPloc } from "@/application/follow-up/FollowUpsPloc"
+import useFollowUpsState from "@/application/follow-up/useFollowUpsState"
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared CustomAxios — one instance, lazy-initialised.
 // getAuthPloc is a lazy getter so authPlocSingleton is resolved at call time
@@ -453,6 +462,27 @@ export function useItemRequestsPloc(): ItemRequestsPloc {
       deleteRequestUseCase: new DeleteItemRequestUseCase(repo),
     })
     return itemRequestsPlocSingleton
+  }, [router])
+}
+
+// ── Follow-ups ───────────────────────────────────────────────────────────────
+
+let followUpsPlocSingleton: FollowUpsPloc | null = null
+
+export function useFollowUpsPloc(): FollowUpsPloc {
+  const router = useRouter()
+  return useMemo(() => {
+    if (followUpsPlocSingleton) return followUpsPlocSingleton
+    const axios = getSharedAxios(router)
+    const repo = new FollowUpRepository({ axios })
+    followUpsPlocSingleton = new FollowUpsPloc({
+      store: useFollowUpsState,
+      getFollowUpsUseCase: new GetFollowUpsUseCase(repo),
+      createFollowUpUseCase: new CreateFollowUpUseCase(repo),
+      updateFollowUpUseCase: new UpdateFollowUpUseCase(repo),
+      recordFollowUpAttemptUseCase: new RecordFollowUpAttemptUseCase(repo),
+    })
+    return followUpsPlocSingleton
   }, [router])
 }
 
