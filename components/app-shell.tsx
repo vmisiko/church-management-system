@@ -10,6 +10,7 @@ import {
   Package,
   CalendarCheck,
   MessageSquare,
+  UserCheck,
   Bell,
   Search,
   ChevronDown,
@@ -49,6 +50,7 @@ const navGroups = [
     label: "People",
     items: [
       { name: "Members", href: "/people", icon: Users },
+      { name: "Follow-ups", href: "/follow-ups", icon: UserCheck },
       { name: "Fellowships", href: "/fellowships", icon: Church },
       { name: "Departments", href: "/departments", icon: Building2 },
     ],
