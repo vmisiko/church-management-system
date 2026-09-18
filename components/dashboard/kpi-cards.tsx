@@ -81,10 +81,19 @@ export function KpiCardsGrid() {
   const dashboardPloc = useDashboardPloc()
   const stats = useDashboardState((state) => state.stats)
   const loading = useDashboardState((state) => state.loading)
+  const error = useDashboardState((state) => state.error)
 
   useEffect(() => {
     void dashboardPloc.fetchStats()
   }, [dashboardPloc])
+
+  if (error) {
+    return (
+      <div className="rounded-xl p-5 text-center" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+        <p className="text-[12px]" style={{ color: "#EB6A56" }}>Couldn&apos;t load dashboard stats.</p>
+      </div>
+    )
+  }
 
   const dash = loading || !stats ? "—" : null
   const lastSession = stats?.attendance.lastSession ?? null

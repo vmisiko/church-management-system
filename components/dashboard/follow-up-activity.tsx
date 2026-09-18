@@ -22,11 +22,12 @@ export function FollowUpActivity() {
   const loading = useDashboardState((state) => state.loading)
   const error = useDashboardState((state) => state.error)
 
-  // KpiCardsGrid already triggers the initial fetch into the shared
-  // dashboard-stats store; this panel just renders a slice of it.
+  // DashboardPloc.fetchStats() is a no-op once a fetch is in flight or
+  // stats are already loaded, so this and KpiCardsGrid's identical call
+  // safely share one request regardless of mount order.
   useEffect(() => {
-    if (!stats && !loading && !error) void dashboardPloc.fetchStats()
-  }, [dashboardPloc, stats, loading, error])
+    void dashboardPloc.fetchStats()
+  }, [dashboardPloc])
 
   const recentAttempts = stats?.followUps.recentAttempts ?? []
 
