@@ -73,6 +73,7 @@ import useMembersState from "@/application/member/useMembersState"
 // ── Attendance ────────────────────────────────────────────────────────────────
 import { AttendanceRepository } from "@/data/api/attendance/AttendanceRepository"
 import { GetSessionsUseCase } from "@/domain/usecases/attendance/GetSessionsUseCase"
+import { GetSessionsSummaryUseCase } from "@/domain/usecases/attendance/GetSessionsSummaryUseCase"
 import { GetSessionByIdUseCase } from "@/domain/usecases/attendance/GetSessionByIdUseCase"
 import { CreateSessionUseCase } from "@/domain/usecases/attendance/CreateSessionUseCase"
 import { UpdateSessionUseCase } from "@/domain/usecases/attendance/UpdateSessionUseCase"
@@ -326,6 +327,7 @@ export function useAttendancePloc(): AttendancePloc {
     attendancePlocSingleton = new AttendancePloc({
       store: useAttendanceState,
       getSessionsUseCase: new GetSessionsUseCase(repo),
+      getSessionsSummaryUseCase: new GetSessionsSummaryUseCase(repo),
       getSessionByIdUseCase: new GetSessionByIdUseCase(repo),
       createSessionUseCase: new CreateSessionUseCase(repo),
       updateSessionUseCase: new UpdateSessionUseCase(repo),

@@ -1,8 +1,9 @@
 import { create } from 'zustand'
-import type { AttendanceSession, AttendanceRecord } from '@/domain/entities/attendance/Attendance'
+import type { AttendanceSession, SessionSummary, AttendanceRecord } from '@/domain/entities/attendance/Attendance'
 
 export interface AttendanceState {
   sessions: AttendanceSession[]
+  sessionSummaries: SessionSummary[]
   currentSession: AttendanceSession | null
   sessionRecords: AttendanceRecord[]
   memberRecords: AttendanceRecord[]
@@ -14,6 +15,7 @@ export interface AttendanceState {
 const useAttendanceState = create<AttendanceState>(
   (): AttendanceState => ({
     sessions: [],
+    sessionSummaries: [],
     currentSession: null,
     sessionRecords: [],
     memberRecords: [],

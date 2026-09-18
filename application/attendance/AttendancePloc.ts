@@ -2,6 +2,7 @@ import type { StoreApi } from 'zustand'
 import { Ploc } from '@/core/application/ploc'
 import type { AttendanceState } from './useAttendanceState'
 import type { GetSessionsUseCase } from '@/domain/usecases/attendance/GetSessionsUseCase'
+import type { GetSessionsSummaryUseCase } from '@/domain/usecases/attendance/GetSessionsSummaryUseCase'
 import type { GetSessionByIdUseCase } from '@/domain/usecases/attendance/GetSessionByIdUseCase'
 import type { CreateSessionUseCase } from '@/domain/usecases/attendance/CreateSessionUseCase'
 import type { UpdateSessionUseCase } from '@/domain/usecases/attendance/UpdateSessionUseCase'
@@ -20,6 +21,7 @@ import type {
 
 export class AttendancePloc extends Ploc<StoreApi<AttendanceState>> {
   private readonly getSessionsUseCase: GetSessionsUseCase
+  private readonly getSessionsSummaryUseCase: GetSessionsSummaryUseCase
   private readonly getSessionByIdUseCase: GetSessionByIdUseCase
   private readonly createSessionUseCase: CreateSessionUseCase
   private readonly updateSessionUseCase: UpdateSessionUseCase
@@ -33,6 +35,7 @@ export class AttendancePloc extends Ploc<StoreApi<AttendanceState>> {
   constructor({
     store,
     getSessionsUseCase,
+    getSessionsSummaryUseCase,
     getSessionByIdUseCase,
     createSessionUseCase,
     updateSessionUseCase,
@@ -45,6 +48,7 @@ export class AttendancePloc extends Ploc<StoreApi<AttendanceState>> {
   }: {
     store: StoreApi<AttendanceState>
     getSessionsUseCase: GetSessionsUseCase
+    getSessionsSummaryUseCase: GetSessionsSummaryUseCase
     getSessionByIdUseCase: GetSessionByIdUseCase
     createSessionUseCase: CreateSessionUseCase
     updateSessionUseCase: UpdateSessionUseCase
@@ -57,6 +61,7 @@ export class AttendancePloc extends Ploc<StoreApi<AttendanceState>> {
   }) {
     super({ store })
     this.getSessionsUseCase = getSessionsUseCase
+    this.getSessionsSummaryUseCase = getSessionsSummaryUseCase
     this.getSessionByIdUseCase = getSessionByIdUseCase
     this.createSessionUseCase = createSessionUseCase
     this.updateSessionUseCase = updateSessionUseCase
@@ -69,11 +74,22 @@ export class AttendancePloc extends Ploc<StoreApi<AttendanceState>> {
   }
 
   async fetchSessions(): Promise<void> {
+    if (this.store.getState().loading) return
     this.store.setState({ loading: true, error: null })
     const result = await this.getSessionsUseCase.execute()
     result.fold(
       (error) => this.store.setState({ loading: false, error: this.handleError(error) }),
       (sessions) => this.store.setState({ loading: false, sessions }),
+    )
+  }
+
+  async fetchSessionsSummary(): Promise<void> {
+    if (this.store.getState().loading) return
+    this.store.setState({ loading: true, error: null })
+    const result = await this.getSessionsSummaryUseCase.execute()
+    result.fold(
+      (error) => this.store.setState({ loading: false, error: this.handleError(error) }),
+      (sessionSummaries) => this.store.setState({ loading: false, sessionSummaries }),
     )
   }
 

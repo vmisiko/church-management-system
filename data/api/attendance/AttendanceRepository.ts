@@ -6,6 +6,7 @@ import type CustomAxios from '@/core/utility/CustomAxios'
 import type { IAttendanceRepository } from '@/domain/repository/IAttendanceRepository'
 import type {
   AttendanceSession,
+  SessionSummary,
   AttendanceRecord,
   CreateSessionRequest,
   UpdateSessionRequest,
@@ -21,6 +22,15 @@ export class AttendanceRepository extends BaseRepository implements IAttendanceR
   async getSessions(): Promise<Either<DataError, AttendanceSession[]>> {
     try {
       const { data } = await this.axios.get<AttendanceSession[]>('/api/attendance/sessions')
+      return Either.right(data)
+    } catch (error) {
+      return Either.left(mapToDataError(error))
+    }
+  }
+
+  async getSessionsSummary(): Promise<Either<DataError, SessionSummary[]>> {
+    try {
+      const { data } = await this.axios.get<SessionSummary[]>('/api/attendance/sessions/summary')
       return Either.right(data)
     } catch (error) {
       return Either.left(mapToDataError(error))

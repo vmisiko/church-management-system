@@ -2,6 +2,7 @@ import type { Either } from '@/core/domain/Either'
 import type { DataError } from '@/core/domain/DataError'
 import type {
   AttendanceSession,
+  SessionSummary,
   AttendanceRecord,
   CreateSessionRequest,
   UpdateSessionRequest,
@@ -11,6 +12,7 @@ import type {
 
 export interface IAttendanceRepository {
   getSessions(): Promise<Either<DataError, AttendanceSession[]>>
+  getSessionsSummary(): Promise<Either<DataError, SessionSummary[]>>
   createSession(data: CreateSessionRequest): Promise<Either<DataError, AttendanceSession>>
   getSessionById(id: string): Promise<Either<DataError, AttendanceSession>>
   updateSession(id: string, data: UpdateSessionRequest): Promise<Either<DataError, AttendanceSession>>
