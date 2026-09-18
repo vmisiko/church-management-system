@@ -202,11 +202,6 @@ export default function InventoryPage() {
     }
   }
 
-  const openEditCategory = (cat: InventoryCategory) => {
-    setEditingCategory(cat)
-    setCatForm({ name: cat.name, leaderName: cat.leaderName ?? "" })
-  }
-
   const handleEditCategory = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingCategory) return
