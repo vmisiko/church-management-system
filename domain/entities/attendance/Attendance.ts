@@ -23,6 +23,8 @@ export interface SessionSummary {
   adults: number
   children: number
   firstTimers: number
+  guests: number
+  members: number
 }
 
 export interface CreateSessionRequest {

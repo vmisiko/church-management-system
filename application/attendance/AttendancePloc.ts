@@ -13,6 +13,7 @@ import type { GetMemberAttendanceUseCase } from '@/domain/usecases/attendance/Ge
 import type { UpdateAttendanceRecordUseCase } from '@/domain/usecases/attendance/UpdateAttendanceRecordUseCase'
 import type { DeleteAttendanceRecordUseCase } from '@/domain/usecases/attendance/DeleteAttendanceRecordUseCase'
 import type {
+  AttendanceSession,
   CreateSessionRequest,
   UpdateSessionRequest,
   RecordAttendanceRequest,
@@ -102,14 +103,18 @@ export class AttendancePloc extends Ploc<StoreApi<AttendanceState>> {
     )
   }
 
-  async createSession(data: CreateSessionRequest): Promise<void> {
+  async createSession(data: CreateSessionRequest): Promise<AttendanceSession | null> {
     this.store.setState({ submitting: true, error: null })
     const result = await this.createSessionUseCase.execute(data)
-    result.fold(
-      (error) => this.store.setState({ submitting: false, error: this.handleError(error) }),
+    return result.fold(
+      (error) => {
+        this.store.setState({ submitting: false, error: this.handleError(error) })
+        return null
+      },
       (session) => {
         const current = this.store.getState().sessions
         this.store.setState({ submitting: false, sessions: [session, ...current] })
+        return session
       },
     )
   }
@@ -155,14 +160,24 @@ export class AttendancePloc extends Ploc<StoreApi<AttendanceState>> {
     )
   }
 
-  async recordAttendance(data: RecordAttendanceRequest): Promise<void> {
+  async recordAttendance(data: RecordAttendanceRequest): Promise<boolean> {
     this.store.setState({ submitting: true, error: null })
     const result = await this.recordAttendanceUseCase.execute(data)
-    result.fold(
-      (error) => this.store.setState({ submitting: false, error: this.handleError(error) }),
-      async () => {
-        this.store.setState({ submitting: false })
-        await this.fetchSessionRecords(data.sessionId)
+    return result.fold(
+      (error) => {
+        this.store.setState({ submitting: false, error: this.handleError(error) })
+        return false
+      },
+      (record) => {
+        const sessionRecords = this.store.getState().sessionRecords
+        const exists = sessionRecords.some((r) => r.id === record.id)
+        this.store.setState({
+          submitting: false,
+          sessionRecords: exists
+            ? sessionRecords.map((r) => (r.id === record.id ? record : r))
+            : [record, ...sessionRecords],
+        })
+        return true
       },
     )
   }
@@ -176,11 +191,14 @@ export class AttendancePloc extends Ploc<StoreApi<AttendanceState>> {
     )
   }
 
-  async updateRecord(id: string, data: UpdateAttendanceRecordRequest): Promise<void> {
+  async updateRecord(id: string, data: UpdateAttendanceRecordRequest): Promise<boolean> {
     this.store.setState({ submitting: true, error: null })
     const result = await this.updateAttendanceRecordUseCase.execute(id, data)
-    result.fold(
-      (error) => this.store.setState({ submitting: false, error: this.handleError(error) }),
+    return result.fold(
+      (error) => {
+        this.store.setState({ submitting: false, error: this.handleError(error) })
+        return false
+      },
       (updated) => {
         const sessionRecords = this.store
           .getState()
@@ -189,6 +207,7 @@ export class AttendancePloc extends Ploc<StoreApi<AttendanceState>> {
           .getState()
           .memberRecords.map((r) => (r.id === id ? updated : r))
         this.store.setState({ submitting: false, sessionRecords, memberRecords })
+        return true
       },
     )
   }
