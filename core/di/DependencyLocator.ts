@@ -154,6 +154,10 @@ import { UpdateFollowUpUseCase } from "@/domain/usecases/follow-up/UpdateFollowU
 import { RecordFollowUpAttemptUseCase } from "@/domain/usecases/follow-up/RecordFollowUpAttemptUseCase"
 import { FollowUpsPloc } from "@/application/follow-up/FollowUpsPloc"
 import useFollowUpsState from "@/application/follow-up/useFollowUpsState"
+import { DashboardRepository } from "@/data/api/dashboard/DashboardRepository"
+import { GetDashboardStatsUseCase } from "@/domain/usecases/dashboard/GetDashboardStatsUseCase"
+import { DashboardPloc } from "@/application/dashboard/DashboardPloc"
+import useDashboardState from "@/application/dashboard/useDashboardState"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared CustomAxios — one instance, lazy-initialised.
@@ -483,6 +487,24 @@ export function useFollowUpsPloc(): FollowUpsPloc {
       recordFollowUpAttemptUseCase: new RecordFollowUpAttemptUseCase(repo),
     })
     return followUpsPlocSingleton
+  }, [router])
+}
+
+// ── Dashboard ────────────────────────────────────────────────────────────────
+
+let dashboardPlocSingleton: DashboardPloc | null = null
+
+export function useDashboardPloc(): DashboardPloc {
+  const router = useRouter()
+  return useMemo(() => {
+    if (dashboardPlocSingleton) return dashboardPlocSingleton
+    const axios = getSharedAxios(router)
+    const repo = new DashboardRepository({ axios })
+    dashboardPlocSingleton = new DashboardPloc({
+      store: useDashboardState,
+      getDashboardStatsUseCase: new GetDashboardStatsUseCase(repo),
+    })
+    return dashboardPlocSingleton
   }, [router])
 }
 

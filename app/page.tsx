@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell"
 import { KpiCardsGrid } from "@/components/dashboard/kpi-cards"
+import { FollowUpActivity } from "@/components/dashboard/follow-up-activity"
 import { AttendanceSessions } from "@/components/dashboard/attendance-sessions"
 import { MemberDemographics } from "@/components/dashboard/member-demographics"
 import { LiveAlerts } from "@/components/dashboard/live-alerts"
@@ -27,13 +28,18 @@ export default function DashboardPage() {
           <KpiCardsGrid />
         </div>
 
-        {/* ── Attendance (full width) ── */}
+        {/* ── Follow-up activity ── */}
         <div className="rise rise-6">
+          <FollowUpActivity />
+        </div>
+
+        {/* ── Attendance (full width) ── */}
+        <div className="rise rise-7">
           <AttendanceSessions />
         </div>
 
         {/* ── Demographics + Alerts ── */}
-        <div className="rise rise-7 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="rise rise-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
           <MemberDemographics />
           <div className="lg:col-span-2">
             <LiveAlerts />
@@ -41,13 +47,13 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Activity Ledger + Fellowship Zones ── */}
-        <div className="rise rise-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="rise rise-9 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <RecentActivity />
           <FellowshipZones />
         </div>
 
         {/* ── Messaging Stats ── */}
-        <div className="rise rise-9">
+        <div className="rise rise-10">
           <MessageStats />
         </div>
 
