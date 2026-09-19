@@ -161,6 +161,13 @@ import { GetDashboardStatsUseCase } from "@/domain/usecases/dashboard/GetDashboa
 import { DashboardPloc } from "@/application/dashboard/DashboardPloc"
 import useDashboardState from "@/application/dashboard/useDashboardState"
 
+// ── Retention ─────────────────────────────────────────────────────────────────
+import { RetentionRepository } from "@/data/api/retention/RetentionRepository"
+import { GetRetentionStatsUseCase } from "@/domain/usecases/retention/GetRetentionStatsUseCase"
+import { GetAtRiskMembersUseCase } from "@/domain/usecases/retention/GetAtRiskMembersUseCase"
+import { RetentionPloc } from "@/application/retention/RetentionPloc"
+import useRetentionState from "@/application/retention/useRetentionState"
+
 // ── Notifications ─────────────────────────────────────────────────────────────
 import { NotificationRepository } from "@/data/api/notification/NotificationRepository"
 import { GetNotificationsUseCase } from "@/domain/usecases/notification/GetNotificationsUseCase"
@@ -535,6 +542,25 @@ export function useNotificationsPloc(): NotificationsPloc {
       markNotificationReadUseCase: new MarkNotificationReadUseCase(repo),
     })
     return notificationsPlocSingleton
+  }, [router])
+}
+
+// ── Retention ────────────────────────────────────────────────────────────────
+
+let retentionPlocSingleton: RetentionPloc | null = null
+
+export function useRetentionPloc(): RetentionPloc {
+  const router = useRouter()
+  return useMemo(() => {
+    if (retentionPlocSingleton) return retentionPlocSingleton
+    const axios = getSharedAxios(router)
+    const repo = new RetentionRepository({ axios })
+    retentionPlocSingleton = new RetentionPloc({
+      store: useRetentionState,
+      getRetentionStatsUseCase: new GetRetentionStatsUseCase(repo),
+      getAtRiskMembersUseCase: new GetAtRiskMembersUseCase(repo),
+    })
+    return retentionPlocSingleton
   }, [router])
 }
 
