@@ -1,4 +1,5 @@
 export type FollowUpStatus = "open" | "completed" | "cancelled"
+export type FollowUpSource = "manual" | "visitor_automation" | "inactivity_automation"
 export type FollowUpContactMethod = "call" | "sms" | "email" | "visit" | "other"
 export type FollowUpOutcome =
   | "connected"
@@ -16,9 +17,22 @@ export interface FollowUpTask {
   notes: string | null
   dueDate: string
   status: FollowUpStatus
+  source: FollowUpSource
+  escalationLevel: number
+  escalatedAt: string | null
+  escalatedToId: string | null
   completedAt: string | null
   createdAt: string
   updatedAt: string
+}
+
+export interface FollowUpEscalation {
+  id: string
+  taskId: string
+  fromOwnerId: string | null
+  toOwnerId: string
+  reason: string
+  escalatedAt: string
 }
 
 export interface FollowUpAttempt {
