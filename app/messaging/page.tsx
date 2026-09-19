@@ -281,6 +281,7 @@ function MessagingPageContent() {
     targetGroup: MessageTargetGroup
     targetId: string
     memberIds: string[]
+    scheduledAt: string
   }>(() => {
     const now = new Date()
     const day = now.toLocaleDateString("en-US", { weekday: "long" })
@@ -292,6 +293,7 @@ function MessagingPageContent() {
       targetGroup: preselectedMemberIds.length > 0 ? "members" : fellowshipIdParam ? "fellowship" : "all",
       targetId: fellowshipIdParam ?? "",
       memberIds: preselectedMemberIds,
+      scheduledAt: "",
     }
   })
 
@@ -313,12 +315,13 @@ function MessagingPageContent() {
   }, [recipients, form.targetGroup])
 
   useEffect(() => {
-    if (activeTab === "history") ploc.fetchAll()
+    if (activeTab === "history" || activeTab === "scheduled") ploc.fetchAll()
     if (activeTab === "templates") templatePloc.fetchAll()
   }, [activeTab, ploc, templatePloc])
 
   const handleCompose = async (e: React.FormEvent) => {
     e.preventDefault()
+    const isScheduled = form.scheduledAt.length > 0
     const payload: CreateMessageRequest = {
       title: form.title,
       body: form.body,
@@ -326,18 +329,19 @@ function MessagingPageContent() {
       targetGroup: form.targetGroup,
       targetId: form.targetGroup !== "all" && form.targetGroup !== "members" && form.targetId ? form.targetId : null,
       memberIds: form.targetGroup === "members" ? form.memberIds : undefined,
+      scheduledAt: isScheduled ? new Date(form.scheduledAt).toISOString() : null,
     }
     await ploc.create(payload)
     const state = useMessagingState.getState()
     if (!state.error && state.messages[0]) {
-      await ploc.send(state.messages[0].id)
+      if (!isScheduled) await ploc.send(state.messages[0].id)
       if (!useMessagingState.getState().error) {
         const now = new Date()
         const day = now.toLocaleDateString("en-US", { weekday: "long" })
         const time = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
-        setForm({ title: `${day} Service Campaign ${time}`, body: "", type: "announcement", targetGroup: "all", targetId: "", memberIds: [] })
+        setForm({ title: `${day} Service Campaign ${time}`, body: "", type: "announcement", targetGroup: "all", targetId: "", memberIds: [], scheduledAt: "" })
         clearRecipients()
-        setActiveTab("history")
+        setActiveTab(isScheduled ? "scheduled" : "history")
         ploc.fetchAll()
       }
     }
@@ -369,10 +373,15 @@ function MessagingPageContent() {
   const totalDelivered = sentMessages.length
 
   const needsTargetId = form.targetGroup !== "all" && form.targetGroup !== "members"
+  const isScheduling = form.scheduledAt.length > 0
   const canSend = form.title.trim().length > 0 && form.body.trim().length > 0 &&
     (!needsTargetId || form.targetId.length > 0) &&
     (form.targetGroup !== "members" || form.memberIds.length > 0) &&
     !submitting && !sending
+
+  const scheduledMessages = messages.filter(
+    (m) => m.status === "draft" && m.scheduledAt && new Date(m.scheduledAt) > new Date(),
+  )
 
   return (
     <AppShell>
@@ -436,6 +445,9 @@ function MessagingPageContent() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="compose">Compose</TabsTrigger>
+            <TabsTrigger value="scheduled">
+              Scheduled{scheduledMessages.length > 0 ? ` (${scheduledMessages.length})` : ""}
+            </TabsTrigger>
             <TabsTrigger value="history">History</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
           </TabsList>
@@ -511,14 +523,30 @@ function MessagingPageContent() {
                         </Field>
                       </FieldGroup>
 
+                      <FieldGroup>
+                        <Field>
+                          <FieldLabel htmlFor="scheduledAt">Send later (optional)</FieldLabel>
+                          <Input
+                            id="scheduledAt"
+                            type="datetime-local"
+                            value={form.scheduledAt}
+                            min={new Date().toISOString().slice(0, 16)}
+                            onChange={(e) => setForm({ ...form, scheduledAt: e.target.value })}
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Leave blank to send immediately, or pick a future time to queue it for automatic dispatch.
+                          </p>
+                        </Field>
+                      </FieldGroup>
+
                       {submitError && (
                         <p className="text-sm text-destructive">{submitError}</p>
                       )}
 
                       <div className="pt-4 border-t flex items-center justify-end">
                         <Button type="submit" disabled={!canSend} className="gap-2">
-                          <Send className="h-4 w-4" />
-                          {submitting || sending ? "Sending…" : "Send Campaign"}
+                          {isScheduling ? <Clock className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+                          {submitting || sending ? "Saving…" : isScheduling ? "Schedule Campaign" : "Send Campaign"}
                         </Button>
                       </div>
                     </form>
@@ -666,6 +694,67 @@ function MessagingPageContent() {
                 </Card>
               </div>
             </div>
+          </TabsContent>
+
+          {/* ── Scheduled Tab ──────────────────────────────────────────────── */}
+          <TabsContent value="scheduled">
+            <Card className="border shadow-sm">
+              <CardHeader>
+                <CardTitle>Scheduled Campaigns</CardTitle>
+                <CardDescription>Drafts queued for automatic dispatch at a future time</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                {loading && messages.length === 0 ? (
+                  <div className="p-4 space-y-3">
+                    {[0, 1, 2].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
+                  </div>
+                ) : scheduledMessages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
+                    <Clock className="h-10 w-10 opacity-30" />
+                    <p className="text-sm">No campaigns scheduled. Set a "Send later" time when composing.</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">Campaign</TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">Type</TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">Target</TableHead>
+                        <TableHead className="font-semibold text-xs uppercase tracking-wider">Scheduled For</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {scheduledMessages.map((msg) => (
+                        <TableRow key={msg.id}>
+                          <TableCell className="font-medium">{msg.title}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{typeLabels[msg.type]}</Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {targetGroupLabels[msg.targetGroup]}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {msg.scheduledAt ? new Date(msg.scheduledAt).toLocaleString() : "—"}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5 text-destructive hover:text-destructive"
+                              onClick={() => void ploc.delete(msg.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Cancel
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ── History Tab ────────────────────────────────────────────────── */}

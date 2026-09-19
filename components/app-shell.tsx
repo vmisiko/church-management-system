@@ -25,6 +25,7 @@ import {
   Moon,
 } from "lucide-react"
 import { useTheme } from "next-themes"
+import { formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -39,7 +40,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useRouter } from "next/navigation"
 import useAuthState from "@/application/auth/useAuthState"
-import { useAuthPloc } from "@/core/di/DependencyLocator"
+import useNotificationsState from "@/application/notification/useNotificationsState"
+import { useAuthPloc, useNotificationsPloc } from "@/core/di/DependencyLocator"
 
 const navGroups = [
   {
@@ -104,10 +106,13 @@ function CircularSeal({ isDark, size = 44 }: { isDark: boolean; size?: number })
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const ploc = useAuthPloc()
+  const notificationsPloc = useNotificationsPloc()
   const { accessToken, currentUser } = useAuthState()
+  const { notifications, unreadCount } = useNotificationsState()
   const { theme, setTheme } = useTheme()
   const [currentPath, setCurrentPath] = useState("/")
   const [mounted, setMounted] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
 
   useEffect(() => {
     setCurrentPath(window.location.pathname)
@@ -124,6 +129,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (accessToken && !currentUser) ploc.fetchMe()
   }, [accessToken, currentUser, ploc])
+
+  useEffect(() => {
+    if (!accessToken) return
+    void notificationsPloc.fetchAll()
+    const interval = setInterval(() => void notificationsPloc.fetchAll(), 60_000)
+    return () => clearInterval(interval)
+  }, [accessToken, notificationsPloc])
+
+  const openNotification = (notification: (typeof notifications)[number]) => {
+    if (!notification.readAt) void notificationsPloc.markRead(notification.id)
+    setNotificationsOpen(false)
+    if (notification.link) router.push(notification.link)
+  }
 
   const allHrefs = navGroups.flatMap(g => g.items.map(i => i.href))
 
@@ -389,16 +407,55 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             )}
 
             {/* Notifications */}
-            <button className="relative flex h-7 w-7 items-center justify-center rounded-lg cursor-pointer transition-colors hover:bg-secondary">
-              <Bell className="h-3.5 w-3.5 text-muted-foreground" />
-              <span
-                className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full"
-                style={{
-                  background: isDark ? "#E3B04B" : "#C08B2A",
-                  boxShadow: isDark ? "0 0 5px rgba(227,176,75,.7)" : "none",
-                }}
-              />
-            </button>
+            <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+              <DropdownMenuTrigger asChild>
+                <button className="relative flex h-7 w-7 items-center justify-center rounded-lg cursor-pointer transition-colors hover:bg-secondary">
+                  <Bell className="h-3.5 w-3.5 text-muted-foreground" />
+                  {unreadCount > 0 && (
+                    <span
+                      className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full"
+                      style={{
+                        background: isDark ? "#E3B04B" : "#C08B2A",
+                        boxShadow: isDark ? "0 0 5px rgba(227,176,75,.7)" : "none",
+                      }}
+                    />
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuLabel className="flex items-center justify-between">
+                  <span>Notifications</span>
+                  {unreadCount > 0 && <span className="text-xs text-muted-foreground">{unreadCount} unread</span>}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <ScrollArea className="max-h-80">
+                  {notifications.length === 0 ? (
+                    <p className="px-2 py-6 text-center text-sm text-muted-foreground">No notifications yet.</p>
+                  ) : (
+                    notifications.map((notification) => (
+                      <DropdownMenuItem
+                        key={notification.id}
+                        className="flex flex-col items-start gap-0.5 whitespace-normal py-2"
+                        onClick={() => openNotification(notification)}
+                      >
+                        <div className="flex w-full items-center gap-1.5">
+                          {!notification.readAt && (
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                          )}
+                          <span className={cn("text-[13px] font-medium", !notification.readAt && "font-semibold")}>
+                            {notification.title}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{notification.body}</p>
+                        <p className="text-[10px] text-muted-foreground/70">
+                          {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                        </p>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                </ScrollArea>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Mobile avatar */}
             <div className="flex lg:hidden">

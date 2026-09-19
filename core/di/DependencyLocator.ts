@@ -153,12 +153,20 @@ import { GetFollowUpsUseCase } from "@/domain/usecases/follow-up/GetFollowUpsUse
 import { CreateFollowUpUseCase } from "@/domain/usecases/follow-up/CreateFollowUpUseCase"
 import { UpdateFollowUpUseCase } from "@/domain/usecases/follow-up/UpdateFollowUpUseCase"
 import { RecordFollowUpAttemptUseCase } from "@/domain/usecases/follow-up/RecordFollowUpAttemptUseCase"
+import { GetFollowUpEscalationsUseCase } from "@/domain/usecases/follow-up/GetFollowUpEscalationsUseCase"
 import { FollowUpsPloc } from "@/application/follow-up/FollowUpsPloc"
 import useFollowUpsState from "@/application/follow-up/useFollowUpsState"
 import { DashboardRepository } from "@/data/api/dashboard/DashboardRepository"
 import { GetDashboardStatsUseCase } from "@/domain/usecases/dashboard/GetDashboardStatsUseCase"
 import { DashboardPloc } from "@/application/dashboard/DashboardPloc"
 import useDashboardState from "@/application/dashboard/useDashboardState"
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+import { NotificationRepository } from "@/data/api/notification/NotificationRepository"
+import { GetNotificationsUseCase } from "@/domain/usecases/notification/GetNotificationsUseCase"
+import { MarkNotificationReadUseCase } from "@/domain/usecases/notification/MarkNotificationReadUseCase"
+import { NotificationsPloc } from "@/application/notification/NotificationsPloc"
+import useNotificationsState from "@/application/notification/useNotificationsState"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared CustomAxios — one instance, lazy-initialised.
@@ -487,6 +495,7 @@ export function useFollowUpsPloc(): FollowUpsPloc {
       createFollowUpUseCase: new CreateFollowUpUseCase(repo),
       updateFollowUpUseCase: new UpdateFollowUpUseCase(repo),
       recordFollowUpAttemptUseCase: new RecordFollowUpAttemptUseCase(repo),
+      getFollowUpEscalationsUseCase: new GetFollowUpEscalationsUseCase(repo),
     })
     return followUpsPlocSingleton
   }, [router])
@@ -507,6 +516,25 @@ export function useDashboardPloc(): DashboardPloc {
       getDashboardStatsUseCase: new GetDashboardStatsUseCase(repo),
     })
     return dashboardPlocSingleton
+  }, [router])
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+let notificationsPlocSingleton: NotificationsPloc | null = null
+
+export function useNotificationsPloc(): NotificationsPloc {
+  const router = useRouter()
+  return useMemo(() => {
+    if (notificationsPlocSingleton) return notificationsPlocSingleton
+    const axios = getSharedAxios(router)
+    const repo = new NotificationRepository({ axios })
+    notificationsPlocSingleton = new NotificationsPloc({
+      store: useNotificationsState,
+      getNotificationsUseCase: new GetNotificationsUseCase(repo),
+      markNotificationReadUseCase: new MarkNotificationReadUseCase(repo),
+    })
+    return notificationsPlocSingleton
   }, [router])
 }
 
