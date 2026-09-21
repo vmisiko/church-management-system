@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { AppShell } from "@/components/app-shell"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -27,10 +28,12 @@ const METHOD_LABELS: Record<FollowUpContactMethod, string> = { call: "Call", sms
 const OUTCOME_LABELS: Record<FollowUpOutcome, string> = { connected: "Connected", no_answer: "No answer", requested_callback: "Requested callback", not_interested: "Not interested", wrong_number: "Wrong number", other: "Other" }
 const SOURCE_LABELS: Record<string, string> = { visitor_automation: "Auto · New visitor", inactivity_automation: "Auto · Inactivity" }
 
-export default function FollowUpsPage() {
+function FollowUpsPageContent() {
   const followUpsPloc = useFollowUpsPloc()
   const membersPloc = useMembersPloc()
   const usersPloc = useUsersPloc()
+  const searchParams = useSearchParams()
+  const preselectedMemberId = searchParams.get("memberId")
   const tasks = useFollowUpsState((state) => state.tasks)
   const escalations = useFollowUpsState((state) => state.escalations)
   const loading = useFollowUpsState((state) => state.loading)
@@ -51,6 +54,13 @@ export default function FollowUpsPage() {
     void membersPloc.fetchAll({ page: 1, limit: 100 })
     void usersPloc.fetchAll()
   }, [followUpsPloc, membersPloc, usersPloc])
+
+  useEffect(() => {
+    if (preselectedMemberId) {
+      setTaskForm((form) => ({ ...form, memberId: preselectedMemberId }))
+      setIsCreateOpen(true)
+    }
+  }, [preselectedMemberId])
 
   const visibleTasks = useMemo(
     () => (statusFilter === "all" ? tasks : tasks.filter((task) => task.status === statusFilter)),
@@ -358,5 +368,21 @@ export default function FollowUpsPage() {
         </Dialog>
       </div>
     </AppShell>
+  )
+}
+
+export default function FollowUpsPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell>
+          <div className="p-6 flex items-center justify-center">
+            <div className="text-muted-foreground">Loading…</div>
+          </div>
+        </AppShell>
+      }
+    >
+      <FollowUpsPageContent />
+    </Suspense>
   )
 }

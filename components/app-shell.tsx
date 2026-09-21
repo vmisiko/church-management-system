@@ -11,6 +11,7 @@ import {
   CalendarCheck,
   MessageSquare,
   UserCheck,
+  TrendingUp,
   Bell,
   Search,
   ChevronDown,
@@ -71,6 +72,7 @@ const navGroups = [
     items: [
       { name: "Attendance", href: "/attendance", icon: CalendarCheck },
       { name: "Messaging", href: "/messaging", icon: MessageSquare },
+      { name: "Retention", href: "/retention", icon: TrendingUp },
     ],
   },
 ]
