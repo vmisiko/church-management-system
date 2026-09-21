@@ -6,7 +6,6 @@ import { MemberDemographics } from "@/components/dashboard/member-demographics"
 import { LiveAlerts } from "@/components/dashboard/live-alerts"
 import { FellowshipZones } from "@/components/dashboard/fellowship-zones"
 import { MessageStats } from "@/components/dashboard/message-stats"
-import { RecentActivity } from "@/components/dashboard/recent-activity"
 import { DashboardGreeting } from "@/components/dashboard/dashboard-greeting"
 
 export default function DashboardPage() {
@@ -46,9 +45,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ── Activity Ledger + Fellowship Zones ── */}
-        <div className="rise rise-9 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <RecentActivity />
+        {/* ── Fellowship Zones ── */}
+        <div className="rise rise-9">
           <FellowshipZones />
         </div>
 
