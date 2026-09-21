@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react"
 import Papa from "papaparse"
-import jsPDF from "jspdf"
-import { autoTable } from "jspdf-autotable"
 import { AppShell } from "@/components/app-shell"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -54,7 +52,9 @@ function exportCsv(stats: RetentionStats, from: string, to: string) {
   URL.revokeObjectURL(url)
 }
 
-function exportPdf(stats: RetentionStats, from: string, to: string) {
+async function exportPdf(stats: RetentionStats, from: string, to: string) {
+  // Loaded on demand: jspdf's Node build can't be bundled for SSR, and it is only needed on click.
+  const [{ default: jsPDF }, { autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")])
   const doc = new jsPDF()
   doc.setFontSize(16)
   doc.text("Retention Report", 14, 18)
@@ -252,7 +252,7 @@ export default function RetentionPage() {
                     <Download className="h-4 w-4" />
                     Export CSV
                   </Button>
-                  <Button variant="outline" className="gap-2" onClick={() => exportPdf(stats, from, to)}>
+                  <Button variant="outline" className="gap-2" onClick={() => void exportPdf(stats, from, to)}>
                     <FileText className="h-4 w-4" />
                     Export PDF
                   </Button>
