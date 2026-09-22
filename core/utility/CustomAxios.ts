@@ -109,6 +109,11 @@ import type {
       return path.includes("/auth/refresh");
     }
   
+    private isLogoutRequest(config: { url?: string }): boolean {
+      const path = String(config.url ?? "");
+      return path.includes("/auth/logout");
+    }
+
     private normalizeRequestPath(url?: string): string {
       if (!url) return "";
       try {
@@ -164,7 +169,9 @@ import type {
             config.headers["Content-Type"] = "application/json";
           }
           config.headers["Accept"] = "application/json";
-          // config.withCredentials = true;
+          // The API sets the httpOnly refresh_token cookie on login and reads it on /auth/refresh.
+          // Without this the browser drops the cookie cross-origin and every session dies with the access token.
+          config.withCredentials = true;
   
           if (config.skipAuth) {
             return config;
@@ -266,6 +273,12 @@ import type {
   
             switch (statusCode) {
               case 401: {
+                // A 401 on logout means the session is already gone. Refreshing or logging out again
+                // from here re-sends logout, which 401s again and loops forever.
+                if (this.isLogoutRequest(config)) {
+                  return Promise.reject(error);
+                }
+
                 if (config.skipAuth) {
                   if (this.isRefreshTokenRequest(config)) {
                     void this.getAuthPloc()?.logout().catch(() => {});
