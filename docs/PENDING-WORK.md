@@ -11,7 +11,7 @@ Decision (2026-09-21): work only on what gets the app running for a real demo an
 
 **Status as of 2026-09-22: A2, A1, A3 and B7 are done and merged into `main` in both repos** (5 PRs: FE #9, #10; BE #6, #7, #8 — all merged by the user). `main` in both worktrees carries all of it, servers restarted and smoke-tested clean against the merged code.
 
-**Do now, in this order:** ~~A2~~ → ~~A1~~ → ~~A3~~ → ~~B7~~ → **B8 (deployment target and env docs) → A4 (rehearsal)**.
+**Do now, in this order:** ~~A2~~ → ~~A1~~ → ~~A3~~ → ~~B7~~ → ~~B8~~ → **A4 (rehearsal)**.
 **Deferred until the app is running:** B1–B6, B9 (CI, RBAC, test baselines, type errors, security review, performance), all of section C, and section D housekeeping. Nothing there blocks a demo; revisit after A4.
 
 ## How we work through this
@@ -198,14 +198,15 @@ Known facts to start from:
 
 ### B8. Deployment target and environment documentation
 
-**Repo:** Both · **Branch:** `docs/deployment` · **Effort:** M
-**Evidence:** neither repository has a Dockerfile, compose file, or hosting configuration (no `vercel.json`, Render, Fly, or Railway files). The frontend depends on `@vercel/analytics`, which hints that Vercel was intended, but nothing in the repositories confirms a hosting decision.
+**Repo:** Both · **Branch:** `docs/deployment` (FE), `docs/local-demo-env` (BE) · **Effort:** M, scoped down to S once the demo target was decided
+**Status:** ✅ **Done for the demo, 2026-09-22.** User decided: the demo runs on this laptop — no hosting platform, no staging. Delivered `docs/LOCAL-DEMO-RUNBOOK.md` (cold-start sequence, full env var reference table for both apps, known local quirks, mid-demo recovery steps), a frontend `.env.example` (it never had one), and fixed the backend `.env.example`'s stale `DATABASE_URL` port (5432→55432) and `PORT` (3001→3005). Also committed `docs/PENDING-WORK.md` itself for the first time (it had only ever existed on local disk) and removed the two untracked, stale, never-committed handoff docs it superseded (`DEVELOPMENT.md`, `docs/CLAUDE-HANDOFF.md`). PRs: FE `church-management-system#11`, BE `nestapi-cms#9`.
+**Evidence (original, now historical):** neither repository had a Dockerfile, compose file, or hosting configuration (no `vercel.json`, Render, Fly, or Railway files). The frontend depends on `@vercel/analytics`, which hints that Vercel may have been intended — still true, still undecided, but no longer blocking, since it's not needed for a laptop demo.
 
 **Acceptance criteria**
-- [ ] A decision on where the frontend, backend, and database will run.
-- [ ] Complete environment variable reference for both apps (backend list includes `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `JWT_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`, `FRONTEND_URL`, `PORT`, `NODE_ENV`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, the `UWAZII_*` SMS settings, `INACTIVITY_DAYS_THRESHOLD`, `ESCALATION_OVERDUE_DAYS`; frontend needs `NEXT_PUBLIC_API_URL`).
-- [ ] Health check endpoint, log and backup approach, and a rollback note.
-- [ ] A dry-run deployment to a staging environment.
+- [x] A decision on where the frontend, backend, and database will run. — **this laptop**, for the demo.
+- [x] Complete environment variable reference for both apps — in `docs/LOCAL-DEMO-RUNBOOK.md` and both `.env.example` files.
+- [ ] Health check endpoint, log and backup approach, and a rollback note. — **deferred**, not needed for a laptop demo; revisit for a real deployment.
+- [ ] A dry-run deployment to a staging environment. — **N/A for a laptop demo**; revisit if/when a real hosting target is chosen.
 
 ### B9. Pagination, validation, and performance review
 
