@@ -2,68 +2,52 @@
 
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
+import { useDashboardStats } from "./use-dashboard-stats"
+import { WidgetFrame, WidgetLoading, WidgetError, WidgetEmpty } from "./widget-frame"
 
 /*
- * Based on Fellowship + FellowshipZone entities.
- * Shows: zone name, fellowship count, total members, activity health bar.
+ * Zones with at least one fellowship, from GET /api/dashboard/stats.
+ * Shows: zone name, active fellowships, members, size relative to the largest zone, meeting days.
  */
 
-interface Zone {
-  name: string
-  fellowshipCount: number
-  totalMembers: number
-  target: number
-  activeFellowships: number
-  meetingDays: string[]
+const TITLE = "Fellowship Zones"
+const dayOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+/** Fellowships store the day as free text ("Friday"); match on the first three letters. */
+function shortDays(days: string[]): Set<string> {
+  return new Set(days.map((d) => d.trim().slice(0, 3).toLowerCase()))
 }
 
-const zones: Zone[] = [
-  {
-    name: "Nairobi Central",
-    fellowshipCount: 4, activeFellowships: 4,
-    totalMembers: 720, target: 800,
-    meetingDays: ["Mon", "Wed", "Fri", "Sat"],
-  },
-  {
-    name: "Thika Road",
-    fellowshipCount: 3, activeFellowships: 3,
-    totalMembers: 540, target: 600,
-    meetingDays: ["Tue", "Thu", "Sat"],
-  },
-  {
-    name: "Eastlands",
-    fellowshipCount: 4, activeFellowships: 3,
-    totalMembers: 610, target: 700,
-    meetingDays: ["Mon", "Wed", "Fri", "Sun"],
-  },
-  {
-    name: "Kawangware",
-    fellowshipCount: 2, activeFellowships: 2,
-    totalMembers: 310, target: 350,
-    meetingDays: ["Tue", "Sat"],
-  },
-  {
-    name: "Lang'ata",
-    fellowshipCount: 2, activeFellowships: 1,
-    totalMembers: 161, target: 300,
-    meetingDays: ["Wed", "Sat"],
-  },
-]
-
-const dayOfWeek = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
-
 export function FellowshipZones() {
-  const totalMembers = zones.reduce((s, z) => s + z.totalMembers, 0)
+  const { stats, error, loading } = useDashboardStats()
+
+  if (error) return <WidgetFrame title={TITLE}><WidgetError message="Couldn't load fellowship zones." /></WidgetFrame>
+  if (loading || !stats) return <WidgetFrame title={TITLE}><WidgetLoading rows={4} /></WidgetFrame>
+
+  const zones = stats.fellowships.zones ?? []
+  if (zones.length === 0) {
+    return (
+      <WidgetFrame title={TITLE}>
+        <WidgetEmpty>
+          No fellowships yet.{" "}
+          <Link href="/fellowships" className="underline" style={{ color: "var(--primary)" }}>Add one</Link>
+        </WidgetEmpty>
+      </WidgetFrame>
+    )
+  }
+
+  const totalMembers = zones.reduce((s, z) => s + z.memberCount, 0)
   const totalFellowships = zones.reduce((s, z) => s + z.fellowshipCount, 0)
+  const largest = Math.max(...zones.map((z) => z.memberCount), 1)
 
   return (
     <div className="rounded-xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
       {/* Header */}
       <div className="flex items-start justify-between mb-5">
         <div>
-          <h2 className="font-display text-[1.4rem] font-light italic text-foreground">Fellowship Zones</h2>
+          <h2 className="font-display text-[1.4rem] font-light italic text-foreground">{TITLE}</h2>
           <p className="font-mono text-[9px] uppercase tracking-[0.2em] mt-0.5 text-muted-foreground">
-            {zones.length} zones · {totalFellowships} fellowships · {totalMembers.toLocaleString()} members
+            {zones.length} {zones.length === 1 ? "zone" : "zones"} · {totalFellowships} {totalFellowships === 1 ? "fellowship" : "fellowships"} · {totalMembers.toLocaleString()} members
           </p>
         </div>
         <Link href="/fellowships"
@@ -76,13 +60,15 @@ export function FellowshipZones() {
       {/* Zone rows */}
       <div className="flex flex-col gap-1">
         {zones.map((zone) => {
-          const fillPct = Math.min(Math.round((zone.totalMembers / zone.target) * 100), 100)
+          const sizePct = Math.round((zone.memberCount / largest) * 100)
           const hasIssue = zone.activeFellowships < zone.fellowshipCount
+          const meets = shortDays(zone.meetingDays ?? [])
 
           return (
-            <div
-              key={zone.name}
-              className="group rounded-lg px-3 py-3 cursor-pointer transition-all"
+            <Link
+              key={zone.id}
+              href="/fellowships"
+              className="group block rounded-lg px-3 py-3 cursor-pointer transition-all"
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--secondary)" }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent" }}
             >
@@ -102,20 +88,17 @@ export function FellowshipZones() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-[10px] text-muted-foreground">
-                    {zone.totalMembers.toLocaleString()} members
+                    {zone.memberCount.toLocaleString()} {zone.memberCount === 1 ? "member" : "members"}
                   </span>
                   <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               </div>
 
-              {/* Progress bar */}
+              {/* Size relative to the largest zone */}
               <div className="h-1 rounded-full overflow-hidden" style={{ background: "var(--secondary)" }}>
                 <div
                   className="h-full rounded-full transition-all duration-700"
-                  style={{
-                    width: `${fillPct}%`,
-                    background: fillPct >= 90 ? "#6FD79B" : fillPct >= 60 ? "#E3B04B" : "#EFA64A",
-                  }}
+                  style={{ width: `${sizePct}%`, background: "#E3B04B" }}
                 />
               </div>
 
@@ -126,7 +109,7 @@ export function FellowshipZones() {
                     key={d}
                     className="font-mono text-[7.5px] px-1 py-0.5 rounded"
                     style={
-                      zone.meetingDays.includes(d)
+                      meets.has(d.toLowerCase())
                         ? { background: "rgba(227,176,75,.15)", color: "#E3B04B" }
                         : { color: "var(--muted-foreground)", opacity: 0.3 }
                     }
@@ -135,7 +118,7 @@ export function FellowshipZones() {
                   </span>
                 ))}
               </div>
-            </div>
+            </Link>
           )
         })}
       </div>
