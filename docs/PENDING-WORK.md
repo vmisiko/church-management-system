@@ -11,8 +11,10 @@ Decision (2026-09-21): work only on what gets the app running for a real demo an
 
 **Status as of 2026-09-22: A2, A1, A3 and B7 are done and merged into `main` in both repos** (5 PRs: FE #9, #10; BE #6, #7, #8 — all merged by the user). `main` in both worktrees carries all of it, servers restarted and smoke-tested clean against the merged code.
 
-**Do now, in this order:** ~~A2~~ → ~~A1~~ → ~~A3~~ → ~~B7~~ → ~~B8~~ → **A4 (rehearsal)**.
-**Deferred until the app is running:** B1–B6, B9 (CI, RBAC, test baselines, type errors, security review, performance), all of section C, and section D housekeeping. Nothing there blocks a demo; revisit after A4.
+**Status as of 2026-09-23: A4 rehearsed end to end**, see `docs/A4-DEMO-REHEARSAL.md`. All P0 items are now done, pending one open PR: `church-management-system#12` (fix for a member-name display bug the rehearsal would have caught if it weren't found first — "Unknown member" showed for tasks outside the frontend's capped 100-member fetch). **Merge PR #12 before the real demo.** The rehearsal also found 3 leftover test-data members in the dev database that need deleting before the real demo (see the rehearsal doc's "Known limitations").
+
+**Do now, in this order:** ~~A2~~ → ~~A1~~ → ~~A3~~ → ~~B7~~ → ~~B8~~ → ~~A4~~. **All P0 items done.** Remaining before the actual demo: merge PR #12, delete the 3 leftover test members, reseed demo data on the day.
+**Deferred until the app is running:** B1–B6, B9 (CI, RBAC, test baselines, type errors, security review, performance), all of section C, and section D housekeeping. Nothing there blocks a demo.
 
 ## How we work through this
 
@@ -103,12 +105,13 @@ Already live: `kpi-cards.tsx`, `follow-up-activity.tsx`, `attendance-sessions.ts
 
 ### A4. Board demo rehearsal checklist
 
-**Repo:** — · **Branch:** none (document in `docs/`) · **Effort:** S
+**Repo:** — · **Branch:** `docs/a4-rehearsal-checklist` · **Effort:** S
+**Status:** ✅ **Done 2026-09-23.** Full write-up in `docs/A4-DEMO-REHEARSAL.md`. Rehearsed on this laptop: sign in → dashboard (live data confirmed) → create follow-up → record contact attempt (verified persisted via API) → retention page → CSV/PDF export (CSV numbers matched the on-screen KPI cards exactly). Found and fixed one real bug along the way (member-name display, PR #12) and found 2 pre-existing gaps not worth blocking the demo on: no attempt-history view for non-escalated tasks, and 3 leftover test-data members that need a manual delete before the real demo.
 
 **Acceptance criteria**
-- [ ] A written click path: sign in, dashboard, create a follow-up, record a contact attempt, retention page, exports.
-- [ ] Rehearsed end to end at least once, on the machine or server that will be used.
-- [ ] Known limitations are listed so nothing surprises the presenter (see Open questions).
+- [x] A written click path: sign in, dashboard, create a follow-up, record a contact attempt, retention page, exports.
+- [x] Rehearsed end to end at least once, on the machine or server that will be used.
+- [x] Known limitations are listed so nothing surprises the presenter (see `docs/A4-DEMO-REHEARSAL.md`).
 
 ---
 
@@ -295,3 +298,5 @@ Fold the sprint outcomes from Phases 3–6 into `docs/DELIVERY-ROADMAP.md`, incl
 **Verified in this cycle (2026-09-21):** phase 6 merged in both repos; the retention page, its trend chart, at-risk table, follow-up prefill link, and date-filtered and unfiltered CSV and PDF exports work in a browser against the local stack; `next build` passes; the code-level findings above (hardcoded widgets, missing guards, no CI, `withCredentials`, `tsc` error counts).
 
 **Not verified:** current backend test results, full-repo frontend lint, department and fellowship filters, live SMS delivery, and the people, inventory, and messaging modules in the browser this cycle.
+
+**Verified in this cycle (2026-09-23, A4 rehearsal):** full cold start from nothing (Docker → backend → frontend); sign-in; live dashboard data; creating a follow-up task; recording a contact attempt (confirmed persisted via direct API check); retention KPIs, trend chart, and at-risk table; CSV export values matched the on-screen KPI cards exactly; PDF export. See `docs/A4-DEMO-REHEARSAL.md` for the full write-up and known limitations.
