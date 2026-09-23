@@ -12,6 +12,8 @@ export type FollowUpOutcome =
 export interface FollowUpTask {
   id: string
   memberId: string
+  /** Present when the backend joined the member row; falls back to a members-list lookup by memberId if absent. */
+  member?: { id: string; firstName: string; lastName: string } | null
   ownerId: string | null
   title: string
   notes: string | null

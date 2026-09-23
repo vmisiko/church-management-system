@@ -67,8 +67,11 @@ function FollowUpsPageContent() {
     [statusFilter, tasks],
   )
 
-  const memberName = (id: string) => {
-    const member = members.find((item) => item.id === id)
+  const memberName = (task: FollowUpTask) => {
+    if (task.member) return `${task.member.firstName} ${task.member.lastName}`
+    // Fallback for tasks the API returns without a joined member (shouldn't happen, but the
+    // members list is capped at 100 and won't cover every member once the list is larger).
+    const member = members.find((item) => item.id === task.memberId)
     return member ? `${member.firstName} ${member.lastName}` : "Unknown member"
   }
   const userEmail = (id: string | null) => {
@@ -197,7 +200,7 @@ function FollowUpsPageContent() {
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {memberName(task.memberId)} · Due {task.dueDate} · Owner: {userEmail(task.ownerId)}
+                    {memberName(task)} · Due {task.dueDate} · Owner: {userEmail(task.ownerId)}
                   </p>
                   {task.notes && <p className="mt-1 text-sm">{task.notes}</p>}
                 </div>
