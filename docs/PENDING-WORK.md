@@ -123,12 +123,17 @@ Already live: `kpi-cards.tsx`, `follow-up-activity.tsx`, `attendance-sessions.ts
 
 **Repo:** Both · **Branch:** `chore/ci-checks` · **Effort:** S–M
 **Evidence:** neither repository has a `.github/` directory.
+**Status:** ✅ **Mostly done 2026-09-24** — workflows added in both repos (`.github/workflows/ci.yml`), one PR per repo. **Not done:** required status checks on `main`, since neither repo owner (Claude, via the user's account) has admin access to either repo — only `vmisiko` (Victor, the repo owner) can configure branch protection. Left as an open ask for Victor rather than attempted.
+
+Frontend workflow: `lint-and-build` job (pnpm lint, `next build`) — both currently green. A second `typecheck` job runs `tsc --noEmit` and reports the known 79 errors (B4) but is `continue-on-error: true`, not blocking.
+
+Backend workflow: `lint-and-build` job (`eslint` without `--fix`, `nest build`) — both currently green (the 25,992 "errors" a local Windows run of the same lint command shows are `core.autocrlf`-introduced CRLF noise on this machine only; the committed files are LF and lint clean on Linux CI). A second `test` job runs the real `jest` suite and reports the known 10/52 failing suites (B3) but is `continue-on-error: true`, not blocking.
 
 **Acceptance criteria**
-- [ ] Frontend: lint and `next build` on every pull request.
-- [ ] Backend: lint, build, and unit tests on every pull request.
-- [ ] Status checks are required before merge on `main`.
-- [ ] Known baseline failures (see B3, B4) are listed in the workflow or README, not hidden.
+- [x] Frontend: lint and `next build` on every pull request.
+- [x] Backend: lint, build, and unit tests on every pull request.
+- [ ] Status checks are required before merge on `main` — **needs Victor**: repo Settings → Branches → branch protection rule on `main` → require status checks `lint-and-build` (both repos). Whether to also require the currently-known-failing `typecheck`/`test` jobs is his call — recommend leaving them optional until B3/B4 land.
+- [x] Known baseline failures (see B3, B4) are listed in the workflow or README, not hidden.
 
 ### B2. Role-based access on unguarded controllers
 
@@ -143,7 +148,9 @@ Already live: `kpi-cards.tsx`, `follow-up-activity.tsx`, `attendance-sessions.ts
 ### B3. Backend test baseline
 
 **Repo:** Backend · **Branch:** `test/backend-baseline` · **Effort:** M
-**Evidence:** last measured (before Phase 5–6) at 10 failing suites of 42, mainly stale inventory and messaging fixtures and missing member-repository mocks. **Not re-measured since**; there are now 52 spec files. Unfinished inventory fixture work sits in the local `church-cms-backend` worktree on branch `test/inventory-fixtures` (3 uncommitted spec files; the branch itself is behind `main` by 17 commits).
+**Evidence:** last measured (before Phase 5–6) at 10 failing suites of 42, mainly stale inventory and messaging fixtures and missing member-repository mocks. Unfinished inventory fixture work sits in the local `church-cms-backend` worktree on branch `test/inventory-fixtures` (3 uncommitted spec files; the branch itself is behind `main` by 17 commits).
+
+**Re-measured 2026-09-24 (B1 CI setup):** `npx jest` on `main` — **10 failing suites of 52, 23 failing tests of 481**. Same shape as before: mostly outdated mocks not updated when interfaces grew (e.g. `members.usecases.spec.ts` mocks `IMemberRepository` without the newer `previewBulkImport` method). CI now runs this suite on every PR and reports it (`.github/workflows/ci.yml` in the backend repo), but the job is `continue-on-error: true` so it doesn't block merges until this item is done.
 
 **Acceptance criteria**
 - [ ] Run the full suite on current `main` and record the real pass and fail counts here.
@@ -155,10 +162,12 @@ Already live: `kpi-cards.tsx`, `follow-up-activity.tsx`, `attendance-sessions.ts
 **Repo:** Frontend · **Branch:** `chore/frontend-types` · **Effort:** M
 **Evidence:** `next.config.mjs` sets `typescript.ignoreBuildErrors: true`, so `next build` does not check types. `tsc --noEmit` reports 79 errors, 69 of them in `data/api/**`. The dominant one is `Property 'data' does not exist` from `const { data } = await this.axios.get<T>(...)`, a pattern used by every repository that works at runtime. It points to a typing mismatch in `CustomAxios` or `BaseRepository`, so a single central fix should clear most of them.
 
+**Re-confirmed 2026-09-24 (B1 CI setup):** still exactly 79 errors. CI now runs `tsc --noEmit` on every PR and reports it (`.github/workflows/ci.yml`, `typecheck` job), but it's `continue-on-error: true` so it doesn't block merges until this item is done.
+
 **Acceptance criteria**
 - [ ] `tsc --noEmit` reports zero errors.
 - [ ] `ignoreBuildErrors` removed and `next build` still passes.
-- [ ] Type check runs in CI (B1).
+- [x] Type check runs in CI (B1) — non-blocking until this item is done.
 
 ### B5. Frontend tests and full lint baseline
 
@@ -302,3 +311,13 @@ Fold the sprint outcomes from Phases 3–6 into `docs/DELIVERY-ROADMAP.md`, incl
 **Not verified:** current backend test results, full-repo frontend lint, department and fellowship filters, live SMS delivery, and the people, inventory, and messaging modules in the browser this cycle.
 
 **Verified in this cycle (2026-09-23, A4 rehearsal):** full cold start from nothing (Docker → backend → frontend); sign-in; live dashboard data; creating a follow-up task; recording a contact attempt (confirmed persisted via direct API check); retention KPIs, trend chart, and at-risk table; CSV export values matched the on-screen KPI cards exactly; PDF export. See `docs/A4-DEMO-REHEARSAL.md` for the full write-up and known limitations.
+
+Not done — deliberately deferred, not finished:
+- No CI on either repo (no automated build/test/lint on PRs)
+- No RBAC on dashboard, follow-ups, retention, notifications, inventory/stock-movements controllers — any authenticated user can hit them regardless of role
+- Frontend has 79 tsc errors hidden behind ignoreBuildErrors: true — the build doesn't actually type-check
+- Almost no test coverage — 3 frontend test files, backend suite last measured with 10/42 suites failing (not re-measured since)
+- No security review — no rate limiting anywhere, default admin credentials pattern not hardened for production
+- No real deployment — it only runs on this laptop; no hosting target, no staging, no health checks/backups/rollback plan
+- Product gaps from the PRD — welfare/care tracking, "invited by" tracking, engagement scoring, fellowship-zone overseer assignment: none built
+- A few smaller findings from the rehearsal — the retention trend chart plots the current partial month as 0% instead of a gap, and there's no way to view past contact attempts on a non-escalated follow-up task from the UI

@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  lint-and-build:
+    name: lint-and-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+  typecheck:
+    name: typecheck (known-failing, not blocking)
+    runs-on: ubuntu-latest
+    # Known baseline as of 2026-09-24: 79 pre-existing `tsc` errors, tracked as
+    # backlog item B4 in docs/PENDING-WORK.md (`data/api/**` repositories all
+    # share one typing mismatch). `next build` currently sets
+    # `typescript.ignoreBuildErrors: true`, so the build job above does not
+    # catch these. This job runs the real type check and reports it, but does
+    # not block merges until B4 removes `ignoreBuildErrors` and the count
+    # reaches zero — at that point, drop `continue-on-error` here.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: npx tsc --noEmit
