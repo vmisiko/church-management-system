@@ -140,10 +140,22 @@ Backend workflow: `lint-and-build` job (`eslint` without `--fix`, `nest build`) 
 **Repo:** Backend (+ Frontend where UI must adapt) · **Branch:** `feat/rbac-remaining-controllers` · **Effort:** M
 **Evidence:** these controllers use `JwtAuthGuard` but no `RolesGuard`: `dashboard`, `follow-ups`, `retention`, `notifications`, `inventory/stock-movements`. Most other controllers already use `@Roles`.
 
+**Decision (2026-09-24):** keep the existing 3-role model (`super_admin`, `admin`, `staff`) rather than introducing new role names — the user considered `senior_pastor`/`protocol_team` but chose to keep the current roles and just apply them, since the role enum is already used across 17 files and the `users` table's DB enum column.
+
+| Controller | Roles allowed | Why |
+|---|---|---|
+| `dashboard` | `super_admin`, `admin`, `staff` | Read-only aggregate KPIs, same tier as `retention` below |
+| `follow-ups` (all actions incl. create/update/record-attempt) | `super_admin`, `admin`, `staff` | Hands-on operational work, matches the `members` controller precedent (the one existing controller where `staff` already has read/write access) |
+| `retention` | `super_admin`, `admin`, `staff` | Confirms the standing decision noted above — left open to all authenticated staff |
+| `notifications` | `super_admin`, `admin`, `staff` | Self-scoped to the logged-in user's own notifications regardless of role — not a privilege question |
+| `inventory/stock-movements` | `super_admin`, `admin` (no `staff`) | Matches every sibling inventory controller (items, categories, damage-reports, item-requests), which all exclude `staff` |
+
+**Status:** ✅ **Done 2026-09-24.** `RolesGuard` + `@Roles` added to all 5 controllers per the table above. New tests: `src/common/guards/__tests__/roles.guard.spec.ts` (unit tests the shared guard's allow/deny logic directly — no metadata → allow, matching role → allow, non-matching role → deny, no user → deny) and `src/inventory/presentation/__tests__/stock-movements.controller.spec.ts` (end-to-end through a real, non-overridden `RolesGuard`: `super_admin`/`admin` get 200, `staff` gets 403 and the service is never called). Full suite re-run clean: same 10 pre-existing failing suites as the B1 baseline, zero regressions, all 7 new tests pass. Frontend: the "Stock" sidebar link is hidden for `staff` users (the one place role now visibly changes what's accessible; the other 4 areas allow all 3 roles so there's nothing to hide there).
+
 **Acceptance criteria**
-- [ ] A written decision on which roles may view and change follow-ups, view retention and dashboard data, and read stock movements. Retention was deliberately left open to all authenticated staff, so record whether that stands.
-- [ ] Guards and `@Roles` applied accordingly, with tests for allowed and denied roles.
-- [ ] Frontend hides or disables actions the current role cannot perform.
+- [x] A written decision on which roles may view and change follow-ups, view retention and dashboard data, and read stock movements. Retention was deliberately left open to all authenticated staff, so record whether that stands. — confirmed, table above.
+- [x] Guards and `@Roles` applied accordingly, with tests for allowed and denied roles.
+- [x] Frontend hides or disables actions the current role cannot perform.
 
 ### B3. Backend test baseline
 

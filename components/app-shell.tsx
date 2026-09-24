@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   LayoutDashboard,
   Users,
@@ -63,7 +63,9 @@ const navGroups = [
     items: [
       { name: "Items", href: "/inventory", icon: Package },
       { name: "Categories", href: "/inventory/categories", icon: Boxes },
-      { name: "Stock", href: "/inventory/stock", icon: ClipboardList },
+      // Stock movements are super_admin/admin only on the backend (see B2 in
+      // docs/PENDING-WORK.md) — hidden below for staff.
+      { name: "Stock", href: "/inventory/stock", icon: ClipboardList, roles: ["super_admin", "admin"] },
       { name: "Damage Reports", href: "/inventory/damage-reports", icon: FileWarning },
     ],
   },
@@ -145,6 +147,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (notification.link) router.push(notification.link)
   }
 
+  const visibleNavGroups = useMemo(
+    () =>
+      navGroups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) => {
+            const roles = "roles" in item ? item.roles : undefined
+            return !roles || roles.includes(currentUser?.role ?? "")
+          }),
+        }))
+        .filter((group) => group.items.length > 0),
+    [currentUser?.role],
+  )
+
   const allHrefs = navGroups.flatMap(g => g.items.map(i => i.href))
 
   const isActive = (href: string) => {
@@ -214,7 +230,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* ── Navigation ── */}
         <ScrollArea className="relative flex-1 py-5">
           <nav className="flex flex-col gap-5 px-3">
-            {navGroups.map((group) => {
+            {visibleNavGroups.map((group) => {
               stagger++
               return (
                 <div key={group.label} className={`rise rise-${Math.min(stagger + 1, 12)}`}>
