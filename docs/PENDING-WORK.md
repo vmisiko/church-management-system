@@ -164,10 +164,12 @@ Backend workflow: `lint-and-build` job (`eslint` without `--fix`, `nest build`) 
 
 **Re-measured 2026-09-24 (B1 CI setup):** `npx jest` on `main` — **10 failing suites of 52, 23 failing tests of 481**. Same shape as before: mostly outdated mocks not updated when interfaces grew (e.g. `members.usecases.spec.ts` mocks `IMemberRepository` without the newer `previewBulkImport` method). CI now runs this suite on every PR and reports it (`.github/workflows/ci.yml` in the backend repo), but the job is `continue-on-error: true` so it doesn't block merges until this item is done.
 
+**Status:** ✅ **Done 2026-09-24 — 54/54 suites, 579/579 tests, all green.** All 10 failing suites were stale fixtures, not product bugs — each one mocked an interface shape from before a later refactor (the inventory/damage-report domain rename to `DamageStatus`/`code`/`totalQty`/`availableQty`, messaging's `memberIds` field, members' `previewBulkImport`, the department repository's move to a query-builder join for `memberCount`, and the member repository gaining a second `FellowshipEntity` constructor dependency for CSV preview). One test (`members.controller.spec.ts`, bulk-import invalid-email) encoded a since-changed **product** decision, not a stale mock: `BulkMemberRowDto`'s `@Transform` on `email` now silently drops anything that doesn't parse as an address instead of failing the whole row — intentional, so a bad email in a large CSV import doesn't reject that member. Updated the test to assert the real (201, email dropped) behavior instead of the old 400 expectation, with a comment explaining why. CI's `test` job is no longer `continue-on-error` — it's a real blocking check now. The old `church-cms-backend` worktree's `test/inventory-fixtures` branch (17 commits behind `main`, 3 uncommitted spec files) attempted nearly the same inventory-fixture fix independently — now superseded/redundant; left untouched, not deleted, since it's someone else's uncommitted work.
+
 **Acceptance criteria**
-- [ ] Run the full suite on current `main` and record the real pass and fail counts here.
-- [ ] Rebase or salvage the `test/inventory-fixtures` work, then fix the remaining failing suites.
-- [ ] `npm test` passes in CI (B1).
+- [x] Run the full suite on current `main` and record the real pass and fail counts here. — 54/54 suites, 579/579 tests, 0 failing.
+- [x] Rebase or salvage the `test/inventory-fixtures` work, then fix the remaining failing suites. — fixed directly on `main` instead; the old branch is now redundant (see above).
+- [x] `npm test` passes in CI (B1) — and the job is blocking, not `continue-on-error`.
 
 ### B4. Frontend type errors, then remove `ignoreBuildErrors`
 
