@@ -178,10 +178,21 @@ Backend workflow: `lint-and-build` job (`eslint` without `--fix`, `nest build`) 
 
 **Re-confirmed 2026-09-24 (B1 CI setup):** still exactly 79 errors. CI now runs `tsc --noEmit` on every PR and reports it (`.github/workflows/ci.yml`, `typecheck` job), but it's `continue-on-error: true` so it doesn't block merges until this item is done.
 
+**Status:** ✅ **Done 2026-09-24 — 79 → 0.** The single central fix predicted above was real: `CustomAxios.get/post/put/patch/delete` declared `Promise<T>` but actually resolved to the raw axios `AxiosResponse<T>` at runtime (they just proxy straight to `axiosInstance.get/post/...`, which always wraps in `{ data, status, ... }`). Every one of the 69 `data/api/**` call sites was already correctly written for that reality (`const { data } = await this.axios.get<T>(...)`) — the method signatures were just lying. Fixed the 5 signatures to say `Promise<AxiosResponse<T>>`, which cleared 65 of the 79 errors with no call-site changes. The remaining 14:
+- **`app/inventory/page.tsx` (3):** real bugs. The item edit form sent `totalQty` to an update endpoint that doesn't accept it (stock must go through the audited `adjustStock` path on `/inventory/stock`) — removed the field from the edit form and payload. The category forms had a free-text "Leader" name input wired to a `leaderName` field that doesn't exist on the backend (`leaderId`, a UUID, is what's expected) — the backend's `whitelist: true` validation was silently dropping it, so this input has done nothing since it was written. Removed the dead input rather than building a real leader-picker (a separate feature, not a type fix).
+- **`AuthPloc.logout()` (1):** declared `Promise<unknown>` but had no explicit return on any path — added one.
+- **`MembersPloc.assignDepartment`/`removeDepartment` (2):** a real bug, not just a type nit — `Either.fold()`'s two branches returned mismatched types (`void` vs `Promise<void>`), which also meant the success branch's `await this.fetchDepartments(...)` was fire-and-forget instead of actually awaited by the caller. Made both branches `async` and awaited the whole `fold(...)` call.
+- **`BaseUseCase.ts` (1):** deleted — dead code, zero imports anywhere in the repo.
+- **3 `vitest` test files:** the only 3 test files in the whole frontend repo (see B5), importing from `vitest`, which isn't installed — there's no test runner yet, so nothing executes them today. Excluded `**/__tests__/**` and `**/*.test.ts(x)` from `tsconfig.json` rather than pre-deciding B5's runner choice; B5 will need to revisit this exclusion once a runner is chosen.
+- **`FollowUpRepository.getById`/`recordAttempt` (2):** missing explicit generic type arguments on `this.axios.get(...)`/`.post(...)`, so `T` defaulted to `unknown`. Added them.
+- **`MessageTemplateRepository.getAll`/`create` (2):** a real latent bug — the generic type argument claimed the API wraps its response in an extra `{ data: ... }` envelope (`this.axios.get<{ data: MessageTemplate[] }>(...)`), but the backend controller returns a bare array/object (confirmed by reading `messaging-templates.controller.ts`). Fixed to match every other repository's pattern (no wrapper). Verified in the browser: created and deleted a real message template successfully.
+
+`next.config.mjs`'s `typescript.ignoreBuildErrors` removed; `next build` now runs real type-checking and passes. CI's `typecheck` job is no longer `continue-on-error`. Verified in the browser beyond the template test above: inventory item edit (no more Total Quantity field, saves cleanly), category list, follow-up escalation history — no console errors.
+
 **Acceptance criteria**
-- [ ] `tsc --noEmit` reports zero errors.
-- [ ] `ignoreBuildErrors` removed and `next build` still passes.
-- [x] Type check runs in CI (B1) — non-blocking until this item is done.
+- [x] `tsc --noEmit` reports zero errors.
+- [x] `ignoreBuildErrors` removed and `next build` still passes.
+- [x] Type check runs in CI (B1) — and it's a blocking check now, not `continue-on-error`.
 
 ### B5. Frontend tests and full lint baseline
 
