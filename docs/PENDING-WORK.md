@@ -123,7 +123,7 @@ Already live: `kpi-cards.tsx`, `follow-up-activity.tsx`, `attendance-sessions.ts
 
 **Repo:** Both · **Branch:** `chore/ci-checks` · **Effort:** S–M
 **Evidence:** neither repository has a `.github/` directory.
-**Status:** ✅ **Mostly done 2026-09-24** — workflows added in both repos (`.github/workflows/ci.yml`), one PR per repo. **Not done:** required status checks on `main`, since neither repo owner (Claude, via the user's account) has admin access to either repo — only `vmisiko` (Victor, the repo owner) can configure branch protection. Left as an open ask for Victor rather than attempted.
+**Status:** ✅ **Merged 2026-09-24** — workflows live on `main` in both repos (`nestapi-cms#10`, `#11`; `church-management-system#15`). CI now runs on every PR. Along the way, fixed 6 real pre-existing lint errors in the backend that CI caught immediately (lint had never run in this repo before). **Not done:** required status checks on `main`, since neither repo owner (Claude, via the user's account) has admin access to either repo — only `vmisiko` (Victor, the repo owner) can configure branch protection. Left as an open ask for Victor rather than attempted.
 
 Frontend workflow: `lint-and-build` job (pnpm lint, `next build`) — both currently green. A second `typecheck` job runs `tsc --noEmit` and reports the known 79 errors (B4) but is `continue-on-error: true`, not blocking.
 
