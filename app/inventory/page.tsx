@@ -88,7 +88,7 @@ const requestStatusStyles: Record<string, string> = {
 }
 
 const EMPTY_ITEM_FORM = { name: "", code: "", categoryId: "", totalQty: 0, condition: "good" as ItemCondition }
-const EMPTY_CAT_FORM = { name: "", leaderName: "" }
+const EMPTY_CAT_FORM = { name: "" }
 const EMPTY_REQ_FORM = { requester: "", itemId: "", quantity: 1, requestDate: new Date().toISOString().split("T")[0], returnDate: "", reason: "" }
 
 export default function InventoryPage() {
@@ -173,7 +173,6 @@ export default function InventoryPage() {
       name: itemForm.name,
       code: itemForm.code,
       categoryId: itemForm.categoryId,
-      totalQty: itemForm.totalQty,
       condition: itemForm.condition,
     })
     if (ok) {
@@ -194,7 +193,6 @@ export default function InventoryPage() {
     e.preventDefault()
     const ok = await categoriesPloc.create({
       name: catForm.name,
-      leaderName: catForm.leaderName || undefined,
     })
     if (ok) {
       setCatForm(EMPTY_CAT_FORM)
@@ -207,7 +205,6 @@ export default function InventoryPage() {
     if (!editingCategory) return
     const ok = await categoriesPloc.update(editingCategory.id, {
       name: catForm.name,
-      leaderName: catForm.leaderName || null,
     })
     if (ok) {
       setEditingCategory(null)
@@ -709,19 +706,9 @@ export default function InventoryPage() {
                   </FieldGroup>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <FieldGroup>
-                    <Field>
-                      <FieldLabel htmlFor="editTotalQty">Total Quantity</FieldLabel>
-                      <Input
-                        id="editTotalQty"
-                        type="number"
-                        min={0}
-                        value={itemForm.totalQty}
-                        onChange={(e) => setItemForm((f) => ({ ...f, totalQty: Number(e.target.value) }))}
-                        required
-                      />
-                    </Field>
-                  </FieldGroup>
+                  {/* Quantity is edited on /inventory/stock (adjustStock), not here —
+                      the backend doesn't accept totalQty on a plain item update, since
+                      stock changes need to go through the audited adjust-stock path. */}
                   <FieldGroup>
                     <Field>
                       <FieldLabel>Condition</FieldLabel>
@@ -774,17 +761,6 @@ export default function InventoryPage() {
                     />
                   </Field>
                 </FieldGroup>
-                <FieldGroup>
-                  <Field>
-                    <FieldLabel htmlFor="leaderName">Leader</FieldLabel>
-                    <Input
-                      id="leaderName"
-                      placeholder="Category leader name"
-                      value={catForm.leaderName}
-                      onChange={(e) => setCatForm((f) => ({ ...f, leaderName: e.target.value }))}
-                    />
-                  </Field>
-                </FieldGroup>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsAddCategoryOpen(false)}>Cancel</Button>
@@ -813,16 +789,6 @@ export default function InventoryPage() {
                       value={catForm.name}
                       onChange={(e) => setCatForm((f) => ({ ...f, name: e.target.value }))}
                       required
-                    />
-                  </Field>
-                </FieldGroup>
-                <FieldGroup>
-                  <Field>
-                    <FieldLabel htmlFor="editLeaderName">Leader</FieldLabel>
-                    <Input
-                      id="editLeaderName"
-                      value={catForm.leaderName}
-                      onChange={(e) => setCatForm((f) => ({ ...f, leaderName: e.target.value }))}
                     />
                   </Field>
                 </FieldGroup>
