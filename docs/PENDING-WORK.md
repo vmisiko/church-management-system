@@ -13,8 +13,10 @@ Decision (2026-09-21): work only on what gets the app running for a real demo an
 
 **Status as of 2026-09-23: A4 rehearsed end to end**, see `docs/A4-DEMO-REHEARSAL.md`. All P0 items are now done, pending one open PR: `church-management-system#12` (fix for a member-name display bug the rehearsal would have caught if it weren't found first — "Unknown member" showed for tasks outside the frontend's capped 100-member fetch). **Merge PR #12 before the real demo.** The rehearsal also found 3 leftover test-data members in the dev database that need deleting before the real demo (see the rehearsal doc's "Known limitations").
 
-**Do now, in this order:** ~~A2~~ → ~~A1~~ → ~~A3~~ → ~~B7~~ → ~~B8~~ → ~~A4~~. **All P0 items done.** Remaining before the actual demo: merge PR #12, delete the 3 leftover test members, reseed demo data on the day.
-**Deferred until the app is running:** B1–B6, B9 (CI, RBAC, test baselines, type errors, security review, performance), all of section C, and section D housekeeping. Nothing there blocks a demo.
+**Status as of 2026-09-24: everything before the demo is done.** PR #12 merged, `main` fast-forwarded locally. The 3 leftover test-data members (`Attendance TestMember`, `Automation TestVisitor`, `E2E Visitor`) were deleted via the API — cascade cleanup confirmed clean (no orphaned follow-ups, dashboard and members endpoints still 200). **Nothing is blocking the board demo.** Only remaining pre-demo action is routine, not a backlog item: re-run `npm run seed:demo -- --reset` the morning of the demo so activity dates look current.
+
+**Do now, in this order:** ~~A2~~ → ~~A1~~ → ~~A3~~ → ~~B7~~ → ~~B8~~ → ~~A4~~. **All P0 items done, nothing outstanding before the demo.**
+**Deferred until after the demo:** B1–B6, B9 (CI, RBAC, test baselines, type errors, security review, performance), all of section C, and section D housekeeping. Nothing there blocks a demo — pick up here next, in priority order, once the demo is behind us.
 
 ## How we work through this
 
