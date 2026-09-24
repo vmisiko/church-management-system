@@ -74,7 +74,15 @@ export class AuthPloc extends Ploc<StoreApi<AuthState>> implements IAuthTokenSou
     result.fold(
       (err) => this.store.setState({ loginLoading: false, loginError: this.handleError(err) }),
       (res) => {
-        this.store.setState({ loginLoading: false, accessToken: res.accessToken })
+        // Always clear the previous session's profile: AppShell only calls
+        // fetchMe() when currentUser is falsy, so a stale persisted
+        // currentUser from a prior account would otherwise survive login and
+        // show the wrong role.
+        this.store.setState({
+          loginLoading: false,
+          accessToken: res.accessToken,
+          currentUser: null,
+        })
         onSuccess()
       },
     )
