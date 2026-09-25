@@ -54,3 +54,28 @@ jobs:
 
       - name: Type check
         run: npx tsc --noEmit
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    # B5 added a real runner (vitest) on 2026-09-25, so this now actually
+    # exercises something — added here specifically because the bug fixed in
+    # this same PR (test files silently losing @/* path-alias resolution
+    # once B4 and B5 were both merged) went undetected until run manually
+    # post-merge. This job is what should have caught it.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Unit tests
+        run: pnpm test
