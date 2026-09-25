@@ -296,6 +296,8 @@ The current metric is an approximation because members have no status-change his
 **Repo:** Both · **Branch:** `test/retention-group-filters` · **Effort:** S
 Never exercised because the dev data has no department or fellowship membership. **Accept when** seed data (A3) covers them and the breakdowns in the on-screen report and in CSV and PDF exports are verified against the database.
 
+**Status:** ✅ **Verified 2026-09-25, no code changes needed.** The blocker in the evidence note was already stale — A3's demo seed has assigned members to departments and fellowships since it was written (dev DB: 126 department memberships, 151 members with a fellowship, across 8 departments and 14 fellowships). Verified live in the browser with both filters applied at once (Department: Worship & Choir, Fellowship: Kawangware The Rock Fellowship): on-screen breakdown table showed 21/18 and 22/18 (members/active), matching direct SQL queries against the seeded database exactly. Downloaded and inspected both the CSV export (`Department: Worship & Choir,21,18,85.7` / `Fellowship: Kawangware The Rock Fellowship,22,18,81.8`) and the PDF export — both matched the on-screen numbers and the database. Nothing to fix; this item was already working correctly, just never checked.
+
 ### C4. Decide how the at-risk queue and trend interact with report filters
 **Repo:** Frontend · **Branch:** `fix/retention-filter-semantics` · **Effort:** S
 Observed: applying a date range changes the KPI cards and exports but not the at-risk list or the trend chart. **Accept when** the intended behaviour is decided, and either implemented or labelled on screen.
