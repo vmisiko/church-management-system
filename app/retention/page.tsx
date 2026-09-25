@@ -19,6 +19,7 @@ import useRetentionState from "@/application/retention/useRetentionState"
 import useDepartmentsState from "@/application/department/useDepartmentsState"
 import useFellowshipsState from "@/application/fellowship/useFellowshipsState"
 import type { AtRiskReason, RetentionStats } from "@/domain/entities/retention/Retention"
+import { buildRetentionCsvRows, buildRetentionSummaryTable, buildRetentionBreakdownTable, retentionExportFilename } from "@/core/utility/retentionExportRows"
 
 const chartConfig = {
   rate: {
@@ -33,21 +34,12 @@ const REASON_LABELS: Record<AtRiskReason, string> = {
 }
 
 function exportCsv(stats: RetentionStats, from: string, to: string) {
-  const rows = [
-    { metric: "30-day retention", eligible: stats.cohortRetention.d30.eligible, value: stats.cohortRetention.d30.retained, ratePct: stats.cohortRetention.d30.rate },
-    { metric: "60-day retention", eligible: stats.cohortRetention.d60.eligible, value: stats.cohortRetention.d60.retained, ratePct: stats.cohortRetention.d60.rate },
-    { metric: "90-day retention", eligible: stats.cohortRetention.d90.eligible, value: stats.cohortRetention.d90.retained, ratePct: stats.cohortRetention.d90.rate },
-    { metric: "Guest conversion", eligible: stats.guestConversion.total, value: stats.guestConversion.converted, ratePct: stats.guestConversion.rate },
-    { metric: "Follow-up completion", eligible: stats.followUpCompletion.total, value: stats.followUpCompletion.completed, ratePct: stats.followUpCompletion.rate },
-    ...(stats.departmentBreakdown ?? []).map((d) => ({ metric: `Department: ${d.name}`, eligible: d.memberCount, value: d.activeCount, ratePct: d.memberCount > 0 ? Math.round((d.activeCount / d.memberCount) * 1000) / 10 : 0 })),
-    ...(stats.fellowshipBreakdown ?? []).map((f) => ({ metric: `Fellowship: ${f.name}`, eligible: f.memberCount, value: f.activeCount, ratePct: f.memberCount > 0 ? Math.round((f.activeCount / f.memberCount) * 1000) / 10 : 0 })),
-  ]
-  const csv = Papa.unparse(rows)
+  const csv = Papa.unparse(buildRetentionCsvRows(stats))
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")
   a.href = url
-  a.download = `retention-report-${from || "all"}-to-${to || "now"}.csv`
+  a.download = retentionExportFilename("csv", from, to)
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -64,24 +56,18 @@ async function exportPdf(stats: RetentionStats, from: string, to: string) {
   autoTable(doc, {
     startY: 32,
     head: [["Metric", "Eligible / Total", "Value", "Rate"]],
-    body: [
-      ["30-day retention", String(stats.cohortRetention.d30.eligible), String(stats.cohortRetention.d30.retained), `${stats.cohortRetention.d30.rate}%`],
-      ["60-day retention", String(stats.cohortRetention.d60.eligible), String(stats.cohortRetention.d60.retained), `${stats.cohortRetention.d60.rate}%`],
-      ["90-day retention", String(stats.cohortRetention.d90.eligible), String(stats.cohortRetention.d90.retained), `${stats.cohortRetention.d90.rate}%`],
-      ["Guest conversion", String(stats.guestConversion.total), String(stats.guestConversion.converted), `${stats.guestConversion.rate}%`],
-      ["Follow-up completion", String(stats.followUpCompletion.total), String(stats.followUpCompletion.completed), `${stats.followUpCompletion.rate}%`],
-    ],
+    body: buildRetentionSummaryTable(stats),
   })
 
-  const breakdown = [...(stats.departmentBreakdown ?? []), ...(stats.fellowshipBreakdown ?? [])]
-  if (breakdown.length > 0) {
+  const breakdownRows = buildRetentionBreakdownTable(stats)
+  if (breakdownRows.length > 0) {
     autoTable(doc, {
       head: [["Group", "Members", "Active"]],
-      body: breakdown.map((row) => [row.name, String(row.memberCount), String(row.activeCount)]),
+      body: breakdownRows,
     })
   }
 
-  doc.save(`retention-report-${from || "all"}-to-${to || "now"}.pdf`)
+  doc.save(retentionExportFilename("pdf", from, to))
 }
 
 export default function RetentionPage() {
