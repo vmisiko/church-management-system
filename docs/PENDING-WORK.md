@@ -302,6 +302,10 @@ Never exercised because the dev data has no department or fellowship membership.
 **Repo:** Frontend · **Branch:** `fix/retention-filter-semantics` · **Effort:** S
 Observed: applying a date range changes the KPI cards and exports but not the at-risk list or the trend chart. **Accept when** the intended behaviour is decided, and either implemented or labelled on screen.
 
+**Decision (2026-09-25):** label, not implement. The trend chart is inherently a fixed 6-month time series — cutting it down further by an arbitrary date range would need redesigning it into a variable-length series, disproportionate to what this view is for. The at-risk queue is a live operational worklist ("who needs a follow-up right now"), not a historical report, so date/group-scoping it doesn't match its purpose either. Also found while investigating: the "At-risk members" KPI card sits in the same row as 3 cards that *do* respond to the date filter, with nothing distinguishing it — same problem, one more place.
+
+**Status:** ✅ **Done 2026-09-25.** Added on-screen labels instead of wiring these into the filters: the trend chart's description now says it's always the most recent 6 months, unaffected by the filters below; the "At-risk members" KPI card label reads "At-risk members (live, not filtered)"; the at-risk table's description says it's a live snapshot, unaffected by the filters above; and the "Leadership Report" filter card's own description now states exactly which metrics it does and doesn't affect. Verified in the browser. `tsc`/`pnpm lint` clean, `vitest run` 6/6 suites, `pnpm build` passes.
+
 ### C5. Gaps from the April 2026 PRD
 **Repo:** Both · **Effort:** L each, plan separately
 
