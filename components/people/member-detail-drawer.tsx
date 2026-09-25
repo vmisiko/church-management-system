@@ -36,7 +36,7 @@ import {
   CommandList,
 } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
-import { Pencil, Trash2, Phone, Mail, Calendar, Users, Building2, Check, ChevronsUpDown } from "lucide-react"
+import { Pencil, Trash2, Phone, Mail, Calendar, Users, Building2, Check, ChevronsUpDown, UserPlus } from "lucide-react"
 import useMembersState from "@/application/member/useMembersState"
 import useFellowshipsState from "@/application/fellowship/useFellowshipsState"
 import useDepartmentsState from "@/application/department/useDepartmentsState"
@@ -71,6 +71,7 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
 
   const member = useMembersState((s) => s.currentMember)
   const memberDepartments = useMembersState((s) => s.memberDepartments)
+  const allMembers = useMembersState((s) => Array.isArray(s.members) ? s.members : [])
   const submitting = useMembersState((s) => s.submitting)
   const submitError = useMembersState((s) => s.error)
 
@@ -90,6 +91,8 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
     activityStatus: "active" as ActivityStatus,
     fellowshipId: "",
     departmentIds: [] as string[],
+    invitedByMemberId: "",
+    invitedByName: "",
   })
 
   useEffect(() => {
@@ -115,6 +118,8 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
         memberType: member.memberType,
         activityStatus: member.activityStatus,
         fellowshipId: member.fellowshipId ?? "",
+        invitedByMemberId: member.invitedByMemberId ?? "",
+        invitedByName: member.invitedByName ?? "",
       }))
     }
   }, [member, memberId])
@@ -139,6 +144,8 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
       memberType: formData.memberType,
       activityStatus: formData.activityStatus,
       fellowshipId: formData.fellowshipId || null,
+      invitedByMemberId: formData.invitedByMemberId || null,
+      invitedByName: formData.invitedByMemberId ? null : formData.invitedByName || null,
     })
     if (useMembersState.getState().error) return
 
@@ -167,6 +174,12 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
   }
 
   const fellowshipName = fellowships.find((f) => f.id === member?.fellowshipId)?.name ?? "None"
+  const invitedByDisplay = member?.invitedByMemberId
+    ? (() => {
+        const inviter = allMembers.find((m) => m.id === member.invitedByMemberId)
+        return inviter ? `${inviter.firstName} ${inviter.lastName}` : "A member"
+      })()
+    : member?.invitedByName || null
   const name = member ? `${member.firstName} ${member.lastName}` : ""
   const initials = member ? `${member.firstName[0] ?? ""}${member.lastName[0] ?? ""}` : ""
 
@@ -346,6 +359,42 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
 
                   <FieldGroup>
                     <Field>
+                      <FieldLabel>Invited by</FieldLabel>
+                      <Select
+                        value={formData.invitedByMemberId || "none"}
+                        onValueChange={(v) =>
+                          setFormData({
+                            ...formData,
+                            invitedByMemberId: v === "none" ? "" : v,
+                            invitedByName: v === "none" ? formData.invitedByName : "",
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Not a current member</SelectItem>
+                          {allMembers
+                            .filter((m) => m.id !== memberId)
+                            .map((m) => (
+                              <SelectItem key={m.id} value={m.id}>{m.firstName} {m.lastName}</SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      {!formData.invitedByMemberId && (
+                        <Input
+                          className="mt-2"
+                          value={formData.invitedByName}
+                          onChange={(e) => setFormData({ ...formData, invitedByName: e.target.value })}
+                          placeholder="Or type a name if they're not a member yet"
+                        />
+                      )}
+                    </Field>
+                  </FieldGroup>
+
+                  <FieldGroup>
+                    <Field>
                       <FieldLabel>Departments</FieldLabel>
                       <Popover open={deptPopoverOpen} onOpenChange={setDeptPopoverOpen}>
                         <PopoverTrigger asChild>
@@ -456,6 +505,12 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
                             month: "long",
                             year: "numeric",
                           })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm">
+                        <UserPlus className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span>
+                          {invitedByDisplay ? `Invited by ${invitedByDisplay}` : <span className="text-muted-foreground">No inviter recorded</span>}
                         </span>
                       </div>
                     </div>

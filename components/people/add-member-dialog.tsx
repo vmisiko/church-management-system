@@ -48,6 +48,8 @@ const emptyFormData = {
   departmentId: "",
   address: "",
   notes: "",
+  invitedByMemberId: "",
+  invitedByName: "",
 }
 
 export function AddMemberDialog({ open, onOpenChange, defaultFellowshipId }: AddMemberDialogProps) {
@@ -57,6 +59,7 @@ export function AddMemberDialog({ open, onOpenChange, defaultFellowshipId }: Add
 
   const fellowships = useFellowshipsState((s) => Array.isArray(s.fellowships) ? s.fellowships : [])
   const departments = useDepartmentsState((s) => Array.isArray(s.departments) ? s.departments : [])
+  const allMembers = useMembersState((s) => Array.isArray(s.members) ? s.members : [])
   const submitting = useMembersState((s) => s.submitting)
   const submitError = useMembersState((s) => s.error)
 
@@ -84,6 +87,8 @@ export function AddMemberDialog({ open, onOpenChange, defaultFellowshipId }: Add
       memberType: formData.memberType,
       activityStatus: formData.activityStatus,
       fellowshipId: formData.fellowshipId || undefined,
+      invitedByMemberId: formData.invitedByMemberId || undefined,
+      invitedByName: formData.invitedByMemberId ? undefined : formData.invitedByName || undefined,
     })
     const error = useMembersState.getState().error
     if (!error) {
@@ -255,6 +260,40 @@ export function AddMemberDialog({ open, onOpenChange, defaultFellowshipId }: Add
                 </Field>
               </FieldGroup>
             </div>
+
+            <FieldGroup>
+              <Field>
+                <FieldLabel>Invited by</FieldLabel>
+                <Select
+                  value={formData.invitedByMemberId || "none"}
+                  onValueChange={(v) =>
+                    setFormData({
+                      ...formData,
+                      invitedByMemberId: v === "none" ? "" : v,
+                      invitedByName: v === "none" ? formData.invitedByName : "",
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not a current member</SelectItem>
+                    {allMembers.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>{m.firstName} {m.lastName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!formData.invitedByMemberId && (
+                  <Input
+                    className="mt-2"
+                    value={formData.invitedByName}
+                    onChange={(e) => setFormData({ ...formData, invitedByName: e.target.value })}
+                    placeholder="Or type a name if they're not a member yet"
+                  />
+                )}
+              </Field>
+            </FieldGroup>
 
             <FieldGroup>
               <Field>
