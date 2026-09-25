@@ -158,7 +158,7 @@ export default function RetentionPage() {
                   <UserX className="h-8 w-8 text-warning" />
                   <div>
                     <p className="text-2xl font-bold">{atRiskTotal}</p>
-                    <p className="text-sm text-muted-foreground">At-risk members</p>
+                    <p className="text-sm text-muted-foreground">At-risk members (live, not filtered)</p>
                   </div>
                 </CardContent>
               </Card>
@@ -167,7 +167,10 @@ export default function RetentionPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Retention Trend</CardTitle>
-                <CardDescription>30-day retention rate for members who joined each month</CardDescription>
+                <CardDescription>
+                  30-day retention rate for members who joined each month. Always the most recent 6 months —
+                  not affected by the date, department, or fellowship filters below.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {stats.trend.every((p) => p.eligible === 0) ? (
@@ -191,7 +194,11 @@ export default function RetentionPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Leadership Report</CardTitle>
-                <CardDescription>Filter by date range or group, then export.</CardDescription>
+                <CardDescription>
+                  Filter by date range or group, then export. Applies to the retention, guest conversion, and
+                  follow-up completion rates above and the group breakdown below — not the trend chart or the
+                  at-risk list, which are always current.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
@@ -271,7 +278,10 @@ export default function RetentionPage() {
         <Card>
           <CardHeader>
             <CardTitle>At-risk members</CardTitle>
-            <CardDescription>Inactive members, or guests who joined 30+ days ago with no recorded attendance.</CardDescription>
+            <CardDescription>
+              Inactive members, or guests who joined 30+ days ago with no recorded attendance. A live snapshot —
+              not affected by the date, department, or fellowship filters above.
+            </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             {atRiskLoading && atRiskMembers.length === 0 ? (
