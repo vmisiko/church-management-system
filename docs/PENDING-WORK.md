@@ -214,6 +214,8 @@ Backend workflow: `lint-and-build` job (`eslint` without `--fix`, `nest build`) 
 
 **Note on `tsc`/CI right now:** this branch was built on top of `main`, which doesn't have B4's fixes yet (`chore/frontend-types`, still open as of this writing) — so a `tsc --noEmit` run here still shows ~76 of B4's pre-existing errors, all in files this item never touches. No new errors from anything in this item. Once both B4 and this PR are merged, the combined `main` will be back to 0.
 
+**Post-merge fix (2026-09-25):** once B4 and B5 were both merged, `pnpm test` was silently broken for 4 of 6 suites — a real interaction bug neither PR could have caught alone. B4's tsconfig `exclude` for test files (a stopgap, since no runner existed yet) and B5's tsconfig-driven `@/*` path-alias resolution for vitest never coexisted until both landed on `main` together; the exclude made every test file lose alias resolution, and 4 of 6 suites use a real (non-type-only) `@/` import that actually needs it. Fixed on `main` directly: removed the now-unneeded tsconfig exclude (a real runner exists now; `tsc --noEmit` is clean with test files included) and reverted `vitest.config.mts` from the "native" `resolve.tsconfigPaths` option (which failed identically) back to the `vite-tsconfig-paths` plugin. `pnpm test`: 6/6 suites, 34/34 tests passing again.
+
 **Acceptance criteria**
 - [x] A `test` script and a unit-test runner configured.
 - [x] Tests for the retention and follow-up Ploc and use cases, and for the export functions in `app/retention/page.tsx` (moved into `core/utility/retentionExportRows.ts`).
