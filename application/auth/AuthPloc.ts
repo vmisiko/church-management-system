@@ -98,6 +98,7 @@ export class AuthPloc extends Ploc<StoreApi<AuthState>> implements IAuthTokenSou
       currentUser: null,
     })
     onSuccess?.()
+    return undefined
   }
 
   async fetchMe() {

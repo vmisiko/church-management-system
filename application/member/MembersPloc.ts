@@ -141,8 +141,8 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
   async assignDepartment(memberId: string, departmentId: string): Promise<void> {
     this.store.setState({ submitting: true, error: null })
     const result = await this.assignMemberDepartmentUseCase.execute(memberId, departmentId)
-    result.fold(
-      (error) => this.store.setState({ submitting: false, error: this.handleError(error) }),
+    await result.fold(
+      async (error) => { this.store.setState({ submitting: false, error: this.handleError(error) }) },
       async () => {
         this.store.setState({ submitting: false })
         await this.fetchDepartments(memberId)
@@ -153,8 +153,8 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
   async removeDepartment(memberId: string, departmentId: string): Promise<void> {
     this.store.setState({ submitting: true, error: null })
     const result = await this.removeMemberDepartmentUseCase.execute(memberId, departmentId)
-    result.fold(
-      (error) => this.store.setState({ submitting: false, error: this.handleError(error) }),
+    await result.fold(
+      async (error) => { this.store.setState({ submitting: false, error: this.handleError(error) }) },
       async () => {
         this.store.setState({ submitting: false })
         await this.fetchDepartments(memberId)

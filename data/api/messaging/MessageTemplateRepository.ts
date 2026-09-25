@@ -13,7 +13,7 @@ export class MessageTemplateRepository extends BaseRepository implements IMessag
 
   async getAll(): Promise<Either<DataError, MessageTemplate[]>> {
     try {
-      const { data } = await this.axios.get<{ data: MessageTemplate[] }>('/api/messaging/templates')
+      const { data } = await this.axios.get<MessageTemplate[]>('/api/messaging/templates')
       return Either.right(data)
     } catch (error) {
       return Either.left(mapToDataError(error))
@@ -22,7 +22,7 @@ export class MessageTemplateRepository extends BaseRepository implements IMessag
 
   async create(params: CreateMessageTemplateRequest): Promise<Either<DataError, MessageTemplate>> {
     try {
-      const { data } = await this.axios.post<{ data: MessageTemplate }>('/api/messaging/templates', params)
+      const { data } = await this.axios.post<MessageTemplate>('/api/messaging/templates', params)
       return Either.right(data)
     } catch (error) {
       return Either.left(mapToDataError(error))

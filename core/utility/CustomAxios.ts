@@ -72,23 +72,27 @@ import type {
       this.setupInterceptors();
     }
   
-    get<T>(url: string, config: InternalAxiosRequestConfig = {}): Promise<T>     {
+    // These resolve to the raw AxiosResponse<T> at runtime (axios always wraps
+    // in { data, status, ... }); every call site destructures `.data` off the
+    // result, so the return type says so instead of the previous `Promise<T>`,
+    // which was never actually what came back.
+    get<T>(url: string, config: InternalAxiosRequestConfig = {}): Promise<AxiosResponse<T>> {
       return this.axiosInstance.get(url, { ...config });
     }
-  
-    post<T>(url: string, data?: any, config: InternalAxiosRequestConfig = {}): Promise<T> {
+
+    post<T>(url: string, data?: any, config: InternalAxiosRequestConfig = {}): Promise<AxiosResponse<T>> {
       return this.axiosInstance.post(url, data, { ...config });
     }
-  
-    put<T>(url: string, data?: any, config: InternalAxiosRequestConfig = {}): Promise<T> {
+
+    put<T>(url: string, data?: any, config: InternalAxiosRequestConfig = {}): Promise<AxiosResponse<T>> {
       return this.axiosInstance.put(url, data, { ...config });
     }
-  
-    patch<T>(url: string, data?: any, config: InternalAxiosRequestConfig = {}): Promise<T> {
+
+    patch<T>(url: string, data?: any, config: InternalAxiosRequestConfig = {}): Promise<AxiosResponse<T>> {
       return this.axiosInstance.patch(url, data, { ...config });
     }
-  
-    delete<T>(url: string, config: InternalAxiosRequestConfig = {}): Promise<T> {
+
+    delete<T>(url: string, config: InternalAxiosRequestConfig = {}): Promise<AxiosResponse<T>> {
       return this.axiosInstance.delete(url, { ...config });
     }
   
