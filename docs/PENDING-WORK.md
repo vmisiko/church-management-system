@@ -286,6 +286,8 @@ Known facts to start from:
 **Repo:** Frontend (backend may return `null`) · **Branch:** `fix/retention-trend-gaps` · **Effort:** S
 Months with no eligible cohort (for example the current month) are plotted as 0%, which reads as everyone leaving. **Accept when** months with `eligible = 0` render as gaps or a labelled "no cohort yet" state.
 
+**Status:** ✅ **Done 2026-09-25.** Backend: `retention.service.ts`'s `getMonthlyTrend()` now returns `rate: null` for a month whose cohort hasn't reached the 30-day mark yet (`eligible === 0`), instead of the misleading `0`. The `d30`/`d60`/`d90` summary cards are untouched — a genuinely eligible cohort that retained nobody should still show 0% there. Frontend: `MonthlyTrendPoint.rate` typed `number | null`; no chart code changes needed — recharts' `<Line>` already renders a gap (not a dip to zero) wherever a data point's value is `null`. Verified in the browser against the seeded dev database: before the fix, the trend line for the current month (Sep 2026, 0 eligible) plunged to 0%; after, the line simply stops after the last real data point (Aug 2026). Also deleted `src/retention/presentation/dto/retention-stats.dto.ts` in the backend — found to be fully dead code (zero imports anywhere) while touching this file. Verified: backend 54/54 suites / 581/581 tests (one new test asserting `trend[].rate` is `null`, not `0`, when `eligible` is 0), clean build; frontend 6/6 suites / 34/34 tests, clean build/lint.
+
 ### C2. True guest-conversion metric
 **Repo:** Backend · **Branch:** `feat/member-status-history` · **Effort:** M
 The current metric is an approximation because members have no status-change history (the code documents this). **Accept when** status changes are recorded with timestamps and the metric measures actual guest-to-member transitions in a period.
@@ -319,6 +321,8 @@ Each needs its own issue with acceptance criteria before work begins.
 
 **Accept when** the guides describe the real local setup (database on port 55432; backend `.env` must set `FRONTEND_URL` to the frontend origin, or the browser blocks all API responses; frontend `.env.local` must set `NEXT_PUBLIC_API_URL`), the roadmap shows true phase status, and the old handoff file is removed.
 
+**Status:** ✅ **Done 2026-09-25.** The old handoff file and the trailing-space nit were already resolved by B8 (2026-09-22) — `DEVELOPMENT.md`/`docs/CLAUDE-HANDOFF.md` don't exist in either repo any more, and real local setup (DB port 55432, `FRONTEND_URL`, `NEXT_PUBLIC_API_URL`) has lived in `docs/LOCAL-DEMO-RUNBOOK.md` since then. What was still stale: `docs/DELIVERY-ROADMAP.md`'s "Phase 2 Status" / "Phase 3 Starting Point" sections, which read as if the project had barely started Phase 3 — replaced with a "Current Status" section stating Phases 1–6 (including Sprint 23's production-readiness work, i.e. B6 and B9) are done, and pointing to `docs/PENDING-WORK.md` as the live source of truth instead of re-narrating status that would just go stale again.
+
 ### D2. GitHub Project and issues
 **Effort:** S
 Neither repository has any issues, and the "Church Management system" project shows only 3 completed PR items, so nothing from Phases 3–6 is tracked. **Accept when** each item in this document becomes an issue (backend and frontend sub-issues where both are touched), added to the project with Priority, Repository, Phase, and Sprint fields, and later PRs use `Closes #n`.
@@ -340,6 +344,8 @@ Still open:
 ### D4. Roadmap edits
 **Effort:** S
 Fold the sprint outcomes from Phases 3–6 into `docs/DELIVERY-ROADMAP.md`, including the parts that were only partly delivered (dashboard alerts, A1).
+
+**Status:** ✅ **Done 2026-09-25, alongside D1.** Deliberately did not duplicate a full per-phase outcome narrative into `docs/DELIVERY-ROADMAP.md` — that's exactly the kind of status that rotted the doc the first time it was written and never revisited. Instead the roadmap now says Phases 1–6 are done and points at `docs/PENDING-WORK.md` for specifics. The one partial-delivery detail D4 flagged, dashboard alerts (A1), is already accurately captured there: the `live-alerts` widget itself was completed and verified against real data, only its unit test coverage is still open (tracked under B5/testing, not a gap in the alerts feature itself).
 
 ---
 

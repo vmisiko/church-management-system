@@ -26,7 +26,9 @@ export interface FollowUpCompletion {
 export interface MonthlyTrendPoint {
   month: string
   eligible: number
-  rate: number
+  // null when the cohort hasn't reached the 30-day mark yet (e.g. the
+  // current month) — distinct from an eligible cohort that retained 0%.
+  rate: number | null
 }
 
 export interface BreakdownRow {
