@@ -199,11 +199,26 @@ Backend workflow: `lint-and-build` job (`eslint` without `--fix`, `nest build`) 
 **Repo:** Frontend · **Branch:** `test/frontend-baseline` · **Effort:** M
 **Evidence:** only 3 test files exist (in `core/utility/__tests__/`) and `package.json` has no `test` script. Playwright is a dependency but has no configured tests. Phase 6 added none. Full `pnpm lint` was not re-run in this cycle (only touched files were linted).
 
+**Status:** ✅ **Done 2026-09-25.** Chose **vitest** over jest — matches what the 3 pre-existing test files already assumed (`import ... from 'vitest'`), and needs far less config for this ESM/TS/Next.js stack.
+
+**A real surprise while wiring this up:** all 3 pre-existing test files turned out to test **dead code**. `Analytics.test.ts` and `MoneyFormatter.test.ts` tested `core/utility/Analytics.ts` and `core/utility/MoneyFormatter.ts` — both zero-import leftover scaffold (the `Analytics` class wraps a `rudderanalytics` global that's never loaded anywhere in this app; the real analytics is `@vercel/analytics` via `components/analytics-wrapper.tsx`, an unrelated same-named class). Deleted both, plus `core/domain/AnalyticsEvents.ts` (only existed to support the dead `Analytics.ts`). `NetworkConstants.test.ts` tested *real, live* code (`NetworkConstants.BASE_URL`, used by `CustomAxios`) but the test itself was never adapted from whatever starter template this repo was bootstrapped from — it asserted a `VITE_APP_BASE_URL` env var and a `pesapal.dev` default that have never existed in this codebase. Rewrote it to test the actual `NEXT_PUBLIC_API_URL` / `localhost:3001` behavior.
+
+**New tests**, all passing (34 tests / 6 files):
+- `domain/usecases/retention/__tests__/retention.usecases.test.ts`, `application/retention/__tests__/RetentionPloc.test.ts`
+- `domain/usecases/follow-up/__tests__/follow-up.usecases.test.ts`, `application/follow-up/__tests__/FollowUpsPloc.test.ts` — including the state-transition logic (list replacement, `selectedTask` sync on update/recordAttempt), the same category of bug B4 found in `MembersPloc`
+- `core/utility/__tests__/retentionExportRows.test.ts` — the retention page's CSV/PDF export row-building was pure-function logic tangled inside `app/retention/page.tsx`; extracted to `core/utility/retentionExportRows.ts` (row shaping, the `memberCount > 0 ? ... : 0` divide-by-zero guard, filename formatting) so it's testable without rendering the page, and the page now just calls it
+
+**Playwright**: added `@playwright/test` (the actual test-runner package; the pre-existing bare `playwright` dependency was unused everywhere and removed), `playwright.config.ts`, and `e2e/sign-in-and-retention.spec.ts` — signs in, lands on the dashboard, navigates to `/retention`, checks the KPIs/trend/at-risk sections render, reloads, and asserts zero console errors. Passes locally (assumes the dev server + backend + DB are already running, per `docs/LOCAL-DEMO-RUNBOOK.md` — not wired into CI, since GitHub Actions can't easily stand up the full stack this app needs).
+
+`pnpm lint` full-repo: clean, 0 errors (was already clean going into B5; stayed clean with all new files).
+
+**Note on `tsc`/CI right now:** this branch was built on top of `main`, which doesn't have B4's fixes yet (`chore/frontend-types`, still open as of this writing) — so a `tsc --noEmit` run here still shows ~76 of B4's pre-existing errors, all in files this item never touches. No new errors from anything in this item. Once both B4 and this PR are merged, the combined `main` will be back to 0.
+
 **Acceptance criteria**
-- [ ] A `test` script and a unit-test runner configured.
-- [ ] Tests for the retention and follow-up Ploc and use cases, and for the export functions in `app/retention/page.tsx` (move them into testable modules if needed).
-- [ ] One Playwright smoke test for sign-in and the retention page.
-- [ ] `pnpm lint` full-repo result recorded, then fixed to zero errors.
+- [x] A `test` script and a unit-test runner configured.
+- [x] Tests for the retention and follow-up Ploc and use cases, and for the export functions in `app/retention/page.tsx` (moved into `core/utility/retentionExportRows.ts`).
+- [x] One Playwright smoke test for sign-in and the retention page.
+- [x] `pnpm lint` full-repo result recorded, then fixed to zero errors — was already zero; stayed zero.
 
 ### B6. Security review
 

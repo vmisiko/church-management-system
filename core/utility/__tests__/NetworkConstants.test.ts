@@ -10,35 +10,29 @@ describe('NetworkConstants', () => {
 
   afterEach(() => {
     process.env = originalEnv
-    vi.clearAllMocks()
   })
 
-  it('should use environment variable VITE_APP_BASE_URL when available', async () => {
-    const customBaseUrl = 'https://custom-api.example.com/v1'
-    vi.stubEnv('VITE_APP_BASE_URL', customBaseUrl)
+  it('uses NEXT_PUBLIC_API_URL when set', async () => {
+    process.env.NEXT_PUBLIC_API_URL = 'https://api.citymega.org'
 
-    // Need to re-import the module to get the new environment variable
     const { NetworkConstants } = await import('../NetworkConstants')
 
-    expect(NetworkConstants.BASE_URL).toBe(customBaseUrl)
+    expect(NetworkConstants.BASE_URL).toBe('https://api.citymega.org')
   })
 
-  it('should use default URL when VITE_APP_BASE_URL is not set', async () => {
-    // Ensure VITE_APP_BASE_URL is not set
-    delete process.env.VITE_APP_BASE_URL
+  it('falls back to localhost:3001 when NEXT_PUBLIC_API_URL is not set', async () => {
+    delete process.env.NEXT_PUBLIC_API_URL
 
-    // Need to re-import the module to get the new environment variable
     const { NetworkConstants } = await import('../NetworkConstants')
 
-    expect(NetworkConstants.BASE_URL).toBe('https://drive.pesapal.dev/v1')
+    expect(NetworkConstants.BASE_URL).toBe('http://localhost:3001')
   })
 
-  it('should use default URL when VITE_APP_BASE_URL is empty', async () => {
-    vi.stubEnv('VITE_APP_BASE_URL', '')
+  it('falls back to localhost:3001 when NEXT_PUBLIC_API_URL is empty', async () => {
+    process.env.NEXT_PUBLIC_API_URL = ''
 
-    // Need to re-import the module to get the new environment variable
     const { NetworkConstants } = await import('../NetworkConstants')
 
-    expect(NetworkConstants.BASE_URL).toBe('https://drive.pesapal.dev/v1')
+    expect(NetworkConstants.BASE_URL).toBe('http://localhost:3001')
   })
 })
