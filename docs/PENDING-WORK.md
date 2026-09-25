@@ -233,13 +233,15 @@ Known facts to start from:
 - CORS allows a single origin from `FRONTEND_URL`.
 - The development admin credentials are in `DEVELOPMENT.md` and `.env.example` variables (`ADMIN_EMAIL`, `ADMIN_PASSWORD`).
 
+**Status:** ✅ **Done 2026-09-25.** Full write-up in `docs/SECURITY-REVIEW.md`. Summary: `@nestjs/throttler` added (global 100/min, auth `login`/`me/password` tightened to 5/min, verified via live 429s); `seed-admin.ts` now refuses to run in production without `ADMIN_EMAIL`/`ADMIN_PASSWORD` set, failing before touching the database; JWT secrets and SMS credentials already correctly `ConfigService`-sourced with no hardcoded fallback, confirmed by a repo-and-history secret scan (clean in both repos); cookie flags and CORS confirmed correct for production/HTTPS, with one minor finding left as a recommendation (`FRONTEND_URL` fails safe to `localhost:3000` instead of failing fast — fine for the current laptop-demo target, worth an `getOrThrow` swap before a real deployment); backend dependency audit 24→0, frontend 63→0, both fully re-verified (backend: full `nest build` + 54/54 `jest` suites; frontend: `tsc --noEmit`, `pnpm lint`, `pnpm build`, 6/6 `vitest` suites). One finding documented but intentionally not fixed: the frontend's access token is duplicated across two `localStorage` locations (XSS-exposed, a standard bearer-token SPA tradeoff) — real fix is a bigger token-storage redesign, out of scope here.
+
 **Acceptance criteria**
-- [ ] Rate limiting on auth endpoints at minimum.
-- [ ] Confirm the default admin cannot exist with a known password in production (forced change or required env value).
-- [ ] JWT secrets and SMS credentials come only from the environment; nothing secret in the repository or git history (scan).
-- [ ] Production cookie flags and CORS origin verified over HTTPS.
-- [ ] Dependency audit for both repositories, with findings triaged.
-- [ ] Findings and decisions written up in `docs/`.
+- [x] Rate limiting on auth endpoints at minimum.
+- [x] Confirm the default admin cannot exist with a known password in production (forced change or required env value).
+- [x] JWT secrets and SMS credentials come only from the environment; nothing secret in the repository or git history (scan).
+- [x] Production cookie flags and CORS origin verified over HTTPS.
+- [x] Dependency audit for both repositories, with findings triaged.
+- [x] Findings and decisions written up in `docs/`.
 
 ### B7. Migrations must build the schema from an empty database
 
