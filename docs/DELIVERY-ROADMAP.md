@@ -169,42 +169,8 @@ A sprint item is complete when:
 - The pull request is merged.
 - The GitHub Project item is moved to `Done`.
 
-## Phase 2 Status
+## Current Status (2026-09-25)
 
-Phase 2 implementation includes:
+Phases 1 through 6 above are all complete and merged in both repositories, including Sprint 23 (production readiness — security review and the pagination/validation/performance pass) and most of Sprint 24 (a board-demo rehearsal has been run end-to-end; user acceptance testing and release prep beyond the demo are still open).
 
-- Follow-up task API
-- Follow-up task database migration
-- Ownership and due dates
-- Open, completed, and cancelled statuses
-- Contact-attempt recording
-- Frontend follow-up queue
-- Task creation and completion
-- Overdue task count
-- Contact-attempt dialog
-- Sidebar navigation
-
-Phase 2 is complete for the frontend. The frontend pull request has been merged into `main`.
-
-The backend pull request and end-to-end contract verification remain required before Phase 2 is considered complete across both repositories.
-
-## Phase 3 Starting Point
-
-Phase 3 is now active for the frontend. Create Phase 3 branches from updated `origin/main`.
-
-The first Phase 3 slice should be:
-
-```text
-feat/123-dashboard-follow-up-metrics
-```
-
-It should expose and display real values for:
-
-- Open follow-up tasks
-- Overdue follow-up tasks
-- Completed follow-up tasks
-- Follow-up completion rate
-- Unassigned follow-up tasks
-- Recent contact attempts
-
-The dashboard must consume backend data rather than hardcoded presentation values.
+Day-to-day status now lives in **`docs/PENDING-WORK.md`**, not here — it tracks the production-readiness backlog (section B, all P1 items B1–B9 done as of this date), the remaining product/PRD gaps (section C, P2), and documentation/project hygiene (section D). Treat the phase table and phase summary above as the historical plan this project was built against, and `docs/PENDING-WORK.md` as the live source of truth for what's actually left.
