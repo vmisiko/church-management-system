@@ -22,6 +22,8 @@ export interface Member {
   churchRole: ChurchRole | null
   isOnline: boolean
   isInternational: boolean
+  invitedByMemberId: string | null
+  invitedByName: string | null
   createdAt: string
   updatedAt: string
 }
@@ -40,6 +42,8 @@ export interface CreateMemberRequest {
   churchRole?: ChurchRole
   isOnline?: boolean
   isInternational?: boolean
+  invitedByMemberId?: string | null
+  invitedByName?: string | null
 }
 
 export interface UpdateMemberRequest {
@@ -57,6 +61,8 @@ export interface UpdateMemberRequest {
   churchRole?: ChurchRole | null
   isOnline?: boolean
   isInternational?: boolean
+  invitedByMemberId?: string | null
+  invitedByName?: string | null
 }
 
 export interface MemberDepartment {
@@ -73,6 +79,7 @@ export interface MemberQueryParams {
   activityStatus?: ActivityStatus
   joinDateRange?: 'recently' | 'week' | 'month'
   search?: string
+  invitedByMemberId?: string
   page?: number
   limit?: number
 }

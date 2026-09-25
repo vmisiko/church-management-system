@@ -317,12 +317,38 @@ Observed: applying a date range changes the KPI cards and exports but not the at
 ### C5. Gaps from the April 2026 PRD
 **Repo:** Both · **Effort:** L each, plan separately
 
-- [ ] **Welfare and care** strategic objective: nothing built.
-- [ ] **"Invited by" tracking** on members.
-- [ ] Engagement score or last-seen on members, and **spiritual milestone** tracking.
-- [ ] **Overseer assignment** for fellowship zones (zones are name-only today).
+**Scoping note (2026-09-25):** no PRD file exists in either repo — "the April 2026 PRD" is a reference to a document from an earlier conversation, not something checked in. The four sub-items below are scoped from the codebase's existing patterns and, for welfare/care specifically, a decision made without that source document (see C5d). Split into its own sub-items so each can be its own branch/PR instead of one L-sized item.
 
-Each needs its own issue with acceptance criteria before work begins.
+#### C5a. "Invited by" tracking on members
+**Branch:** `feat/member-invited-by` · **Effort:** S–M
+Members have no record of who invited them. Add `invited_by_member_id` (nullable FK to `members`, self-referential, `ON DELETE SET NULL` — mirrors `fellowships.leader_id`) **and** `invited_by_name` (nullable text) so an inviter who isn't a member yet (a friend who brought a guest) can still be recorded. Only one should be set at a time; prefer the FK when the inviter is a member.
+**Accept when:** migration adds both columns; `CreateMemberDto`/`UpdateMemberDto` accept either; the member create/edit form has an "Invited by" field (member picker, falling back to free text); the member detail view shows it; `MemberFiltersDto` gets an optional `invitedByMemberId` filter so "who has this person invited" is answerable from the people list.
+
+**Status:** ✅ **Done 2026-09-25.** Backend: migration `AddMemberInvitedBy` (both columns, self-referential FK mirroring `fellowships.leader_id` exactly, `ON DELETE SET NULL`); `CreateMemberDto`/`UpdateMemberDto`/`MemberFiltersDto` accept the new fields; `MemberRepository` passes them through on create/update and filters `findAll` by `invitedByMemberId`. Frontend: both the add-member dialog and the member detail drawer's edit mode got an "Invited by" field — a `Select` of currently-loaded members with a free-text fallback input that appears only when no member is picked; selecting a member clears the free-text value and vice versa, enforced client-side. The member detail view resolves and displays the inviter's name (from the FK) or the free-text name.
+
+**Known limitation, in scope for S–M effort:** the member picker only offers members already loaded into `useMembersState` (the current page/filter of the people list), not a global search — the free-text fallback is the escape hatch when the real inviter isn't in that list. A proper type-ahead member search is a bigger, separate improvement if this turns out to matter in practice.
+
+**Verified:** backend 54/54 suites, 586/586 tests, clean build/lint; all 16 migrations (15 pre-existing + this one) run clean on an empty database; frontend 6/6 suites, 34/34 tests, clean build/lint; live end-to-end in the browser — created a member with a free-text inviter, edited it to switch to a real member via the picker, confirmed the free-text cleared and the detail view correctly resolved and displayed the picked member's name.
+
+#### C5b. Overseer assignment for fellowship zones
+**Branch:** `feat/zone-overseer` · **Effort:** S–M
+`fellowship_zones` is name-only — no way to assign who oversees a zone, and zones can currently only be **created**, never edited, at all (`components/fellowships/add-zone-dialog.tsx` has no edit counterpart). Add `overseer_id` (nullable FK to `members`, `ON DELETE SET NULL` — mirrors `fellowships.leader_id` exactly) to `fellowship_zones`.
+**Accept when:** migration adds the column; zone create/update DTOs and the zone repository support it; a zone **edit** dialog exists (doesn't today) with an overseer picker; the fellowships page's zone list/filter shows the assigned overseer's name; a zone with no overseer is visually flagged, consistent with how B1's dashboard already flags fellowships without a leader.
+
+#### C5c. Engagement score, last-seen, and spiritual milestones
+**Branch:** `feat/member-engagement` · **Effort:** M–L
+Three related but separable pieces:
+- **Last-seen**: compute from `MAX(attendance_records.session_date) WHERE member_id = X AND status = 'present'` at query time — no new stored column, so it's never stale. Expose on the member list and detail view.
+- **Engagement score**: needs a formula decision before building. Proposed starting point: a 0–100 composite from attendance frequency in the last 90 days (weighted highest), follow-up responsiveness (contact attempts that reached `connected`), and current department/fellowship involvement (any vs. none) — cheap to compute per B9's lessons (avoid N+1: one aggregate query per component, not per member). Needs sign-off on the exact weights before implementation, or ship a documented placeholder formula and revisit.
+- **Spiritual milestones**: needs a taxonomy decision — this varies by church tradition and wasn't specified anywhere available. Proposed: a small admin-editable milestone **type** table (not hardcoded enum values) plus a `member_milestones` join table (member_id, milestone_type_id, achieved_at, notes), so the specific milestones (baptism, discipleship class, leadership training, etc.) are configured by the church, not hardcoded by this codebase.
+**Accept when:** last-seen shown; the engagement score formula is either signed off or shipped as an explicitly-labelled placeholder; milestone types are admin-manageable and can be recorded against a member with a date.
+
+#### C5d. Welfare and care case log
+**Branch:** `feat/care-records` · **Effort:** M–L
+**Decision (2026-09-25, made without the source PRD — see scoping note above):** a care case log, mirroring the existing follow-up-attempt pattern rather than inventing a new UI paradigm. New table `care_records`: `id`, `member_id`, `type` (visit / call / hospital / bereavement / financial_need / other), `notes`, `handled_by` (user), `status` (open / resolved), `created_at`, `resolved_at`. Reuses the same UI shapes already built for follow-ups (create dialog, status badges, history list).
+**Accept when:** migration + CRUD API (create, list by member, update status/notes, mark resolved) with role guards matching the follow-ups controller's pattern; a "Care" tab or section on the member detail view listing their care records with a create action; dashboard/retention are **not** touched by this item — surfacing care metrics there is a follow-on, not part of this acceptance.
+
+Each sub-item is its own branch/PR per the usual workflow.
 
 ---
 
