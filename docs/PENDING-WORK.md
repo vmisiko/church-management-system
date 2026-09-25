@@ -270,11 +270,13 @@ Known facts to start from:
 
 **Repo:** Both · **Branch:** `chore/scale-review` · **Effort:** M
 
+**Status:** ✅ **Done 2026-09-25.** Full write-up in `docs/SCALE-REVIEW.md`. Summary: load-tested both repos against a disposable, migrations-only Postgres container seeded with 5,000 members via a new `seeds/load-test-seed.ts` (not the demo seed — kept separate so the board-demo data stays small and realistic). Found and fixed the real problem: `GET /retention/at-risk-members` took 1.53s at that scale because `members` had no index on `activity_status`/`status`/`joined_at` and `attendance_records` had none usable for a member-only lookup — added migration `AddScaleIndexes`, which dropped it to 70–80ms. `GET /messaging/:id/deliveries` (one row per campaign recipient, previously unpaginated) is now paginated end-to-end, backend and frontend. `GET /follow-ups` stays unpaginated by deliberate decision — the frontend's summary cards need the full dataset today, and 219ms at 1,438 rows isn't yet a problem; documented as the threshold to revisit. Retention's 9-query stats set was measured (175–320ms at 5,000 members) and found not to need caching yet; its monthly-trend loop was parallelized regardless since that part was genuinely serial for no reason. One real input-validation gap found and fixed: `inventory/stock-movements?limit=` took an unvalidated raw string. Backend: 54/54 suites, 580/580 tests, clean build/lint. Frontend: 6/6 suites, 34/34 tests, clean build/lint.
+
 **Acceptance criteria**
-- [ ] List endpoints reviewed for pagination, especially members, follow-ups, attendance records, and messages (the retention at-risk endpoint is already paginated).
-- [ ] Load test against the seed data (A3) scaled up to several thousand members; slow queries found and indexed.
-- [ ] The retention statistics query set (several queries per request, six-month trend) measured and, if needed, cached.
-- [ ] Input validation reviewed for date-range and filter parameters.
+- [x] List endpoints reviewed for pagination, especially members, follow-ups, attendance records, and messages (the retention at-risk endpoint is already paginated).
+- [x] Load test against the seed data (A3) scaled up to several thousand members; slow queries found and indexed.
+- [x] The retention statistics query set (several queries per request, six-month trend) measured and, if needed, cached.
+- [x] Input validation reviewed for date-range and filter parameters.
 
 ---
 

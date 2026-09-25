@@ -61,3 +61,10 @@ export interface DeliveryStats {
   delivered: number
   failed: number
 }
+
+export interface PaginatedDeliveries {
+  deliveries: MessageDelivery[]
+  total: number
+  page: number
+  limit: number
+}

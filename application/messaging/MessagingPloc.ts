@@ -139,12 +139,20 @@ export class MessagingPloc extends Ploc<StoreApi<MessagingState>> {
     )
   }
 
-  async fetchDeliveries(messageId: string): Promise<void> {
+  async fetchDeliveries(messageId: string, page = 1): Promise<void> {
     this.store.setState({ loading: true, error: null })
-    const result = await this.getDeliveriesUseCase.execute(messageId)
+    const result = await this.getDeliveriesUseCase.execute(messageId, page)
     result.fold(
       (error) => this.store.setState({ loading: false, error: this.handleError(error) }),
-      (deliveries) => this.store.setState({ loading: false, deliveries }),
+      (res) =>
+        this.store.setState((state) => ({
+          loading: false,
+          // page 1 (a fresh open, or a re-send) replaces the list; later pages append.
+          deliveries: page === 1 ? res.deliveries : [...state.deliveries, ...res.deliveries],
+          deliveriesTotal: res.total,
+          deliveriesPage: res.page,
+          deliveriesLimit: res.limit,
+        })),
     )
   }
 

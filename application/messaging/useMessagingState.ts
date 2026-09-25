@@ -5,6 +5,9 @@ export interface MessagingState {
   messages: Message[]
   currentMessage: Message | null
   deliveries: MessageDelivery[]
+  deliveriesTotal: number
+  deliveriesPage: number
+  deliveriesLimit: number
   deliveryStats: DeliveryStats | null
   loading: boolean
   submitting: boolean
@@ -16,6 +19,9 @@ const useMessagingState = create<MessagingState>()(() => ({
   messages: [],
   currentMessage: null,
   deliveries: [],
+  deliveriesTotal: 0,
+  deliveriesPage: 1,
+  deliveriesLimit: 50,
   deliveryStats: null,
   loading: false,
   submitting: false,

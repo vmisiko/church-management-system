@@ -94,6 +94,8 @@ function CampaignDetailDrawer({
 }) {
   const ploc = useMessagingPloc()
   const deliveries = useMessagingState((s) => s.deliveries)
+  const deliveriesTotal = useMessagingState((s) => s.deliveriesTotal)
+  const deliveriesPage = useMessagingState((s) => s.deliveriesPage)
   const stats = useMessagingState((s) => s.deliveryStats)
   const loading = useMessagingState((s) => s.loading)
 
@@ -189,7 +191,7 @@ function CampaignDetailDrawer({
                 {/* Delivery list */}
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                    Recipients ({deliveries.length})
+                    Recipients ({deliveries.length} of {deliveriesTotal})
                   </p>
                   {loading && deliveries.length === 0 ? (
                     <div className="space-y-2">
@@ -229,6 +231,17 @@ function CampaignDetailDrawer({
                         </TableBody>
                       </Table>
                     </div>
+                  )}
+                  {deliveries.length > 0 && deliveries.length < deliveriesTotal && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full mt-3"
+                      disabled={loading}
+                      onClick={() => message && void ploc.fetchDeliveries(message.id, deliveriesPage + 1)}
+                    >
+                      {loading ? "Loading…" : `Load more (${deliveriesTotal - deliveries.length} remaining)`}
+                    </Button>
                   )}
                 </div>
               </div>

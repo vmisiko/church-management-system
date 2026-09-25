@@ -4,8 +4,8 @@ import type {
   Message,
   CreateMessageRequest,
   UpdateMessageRequest,
-  MessageDelivery,
   DeliveryStats,
+  PaginatedDeliveries,
 } from '@/domain/entities/messaging/Message'
 
 export interface IMessagingRepository {
@@ -15,6 +15,6 @@ export interface IMessagingRepository {
   update(id: string, params: UpdateMessageRequest): Promise<Either<DataError, Message>>
   delete(id: string): Promise<Either<DataError, void>>
   send(id: string): Promise<Either<DataError, void>>
-  getDeliveries(messageId: string): Promise<Either<DataError, MessageDelivery[]>>
+  getDeliveries(messageId: string, page?: number, limit?: number): Promise<Either<DataError, PaginatedDeliveries>>
   getDeliveryStats(messageId: string): Promise<Either<DataError, DeliveryStats>>
 }

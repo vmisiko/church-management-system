@@ -8,8 +8,8 @@ import type {
   Message,
   CreateMessageRequest,
   UpdateMessageRequest,
-  MessageDelivery,
   DeliveryStats,
+  PaginatedDeliveries,
 } from '@/domain/entities/messaging/Message'
 
 export class MessagingRepository extends BaseRepository implements IMessagingRepository {
@@ -71,10 +71,11 @@ export class MessagingRepository extends BaseRepository implements IMessagingRep
     }
   }
 
-  async getDeliveries(messageId: string): Promise<Either<DataError, MessageDelivery[]>> {
+  async getDeliveries(messageId: string, page = 1, limit = 50): Promise<Either<DataError, PaginatedDeliveries>> {
     try {
-      const { data } = await this.axios.get<MessageDelivery[]>(
+      const { data } = await this.axios.get<PaginatedDeliveries>(
         `/api/messaging/${messageId}/deliveries`,
+        { params: { page, limit } },
       )
       return Either.right(data)
     } catch (error) {
