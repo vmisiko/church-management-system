@@ -23,25 +23,31 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, Search, LayoutGrid, List, MapPin } from "lucide-react"
+import { Plus, Search, LayoutGrid, List, MapPin, Pencil, AlertTriangle } from "lucide-react"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { Badge } from "@/components/ui/badge"
 import useFellowshipsState from "@/application/fellowship/useFellowshipsState"
 import useFellowshipZonesState from "@/application/fellowship-zone/useFellowshipZonesState"
-import { useFellowshipsPloc, useFellowshipZonesPloc } from "@/core/di/DependencyLocator"
+import useMembersState from "@/application/member/useMembersState"
+import { useFellowshipsPloc, useFellowshipZonesPloc, useMembersPloc } from "@/core/di/DependencyLocator"
 import type { Fellowship } from "@/domain/entities/fellowship/Fellowship"
+import type { FellowshipZone } from "@/domain/entities/fellowship-zone/FellowshipZone"
 import { AddZoneDialog } from "@/components/fellowships/add-zone-dialog"
 
 export default function FellowshipsPage() {
   const fellowshipsPloc = useFellowshipsPloc()
   const zonesPloc = useFellowshipZonesPloc()
+  const membersPloc = useMembersPloc()
   const fellowships = useFellowshipsState((s) => Array.isArray(s.fellowships) ? s.fellowships : [])
   const loading = useFellowshipsState((s) => s.loading)
   const fellowshipZones = useFellowshipZonesState((s) => Array.isArray(s.fellowshipZones) ? s.fellowshipZones : [])
+  const allMembers = useMembersState((s) => Array.isArray(s.members) ? s.members : [])
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isAddZoneDialogOpen, setIsAddZoneDialogOpen] = useState(false)
   const [editingFellowship, setEditingFellowship] = useState<Fellowship | null>(null)
   const [deletingFellowship, setDeletingFellowship] = useState<Fellowship | null>(null)
+  const [editingZone, setEditingZone] = useState<FellowshipZone | null>(null)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [zoneFilter, setZoneFilter] = useState("all")
@@ -49,9 +55,15 @@ export default function FellowshipsPage() {
   useEffect(() => {
     fellowshipsPloc.fetchAll()
     zonesPloc.fetchAll()
-  }, [fellowshipsPloc, zonesPloc])
+    membersPloc.fetchAll()
+  }, [fellowshipsPloc, zonesPloc, membersPloc])
 
   const zoneNameMap = Object.fromEntries(fellowshipZones.map((z) => [z.id, z.name]))
+  const overseerName = (overseerId: string | null) => {
+    if (!overseerId) return null
+    const m = allMembers.find((member) => member.id === overseerId)
+    return m ? `${m.firstName} ${m.lastName}` : null
+  }
 
   const filteredFellowships = fellowships.filter((f) => {
     const matchesSearch = f.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -142,6 +154,39 @@ export default function FellowshipsPage() {
           </div>
         </div>
 
+        {/* Zones */}
+        {zones.length > 0 && (
+          <div className="rounded-lg border bg-card mb-6">
+            <div className="px-4 py-3 border-b">
+              <h2 className="text-sm font-semibold">Zones</h2>
+            </div>
+            <div className="divide-y">
+              {zones.map((zone) => {
+                const overseer = overseerName(zone.overseerId)
+                return (
+                  <div key={zone.id} className="flex items-center justify-between px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium">{zone.name}</p>
+                      {overseer ? (
+                        <p className="text-xs text-muted-foreground">Overseer: {overseer}</p>
+                      ) : (
+                        <Badge variant="outline" className="mt-1 gap-1 text-xs text-warning border-warning">
+                          <AlertTriangle className="h-3 w-3" />
+                          No overseer assigned
+                        </Badge>
+                      )}
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => setEditingZone(zone)} className="gap-1.5">
+                      <Pencil className="h-3.5 w-3.5" />
+                      Edit
+                    </Button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Fellowship Grid */}
         {loading && fellowships.length === 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -176,6 +221,13 @@ export default function FellowshipsPage() {
           />
         )}
         <AddZoneDialog open={isAddZoneDialogOpen} onOpenChange={setIsAddZoneDialogOpen} />
+        {editingZone && (
+          <AddZoneDialog
+            open={true}
+            onOpenChange={(open) => !open && setEditingZone(null)}
+            zone={editingZone}
+          />
+        )}
 
         <AlertDialog
           open={!!deletingFellowship}
