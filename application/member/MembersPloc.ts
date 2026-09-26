@@ -7,6 +7,7 @@ import type { CreateMemberUseCase } from '@/domain/usecases/member/CreateMemberU
 import type { UpdateMemberUseCase } from '@/domain/usecases/member/UpdateMemberUseCase'
 import type { DeleteMemberUseCase } from '@/domain/usecases/member/DeleteMemberUseCase'
 import type { GetMemberDepartmentsUseCase } from '@/domain/usecases/member/GetMemberDepartmentsUseCase'
+import type { GetMemberEngagementUseCase } from '@/domain/usecases/member/GetMemberEngagementUseCase'
 import type { AssignMemberDepartmentUseCase } from '@/domain/usecases/member/AssignMemberDepartmentUseCase'
 import type { RemoveMemberDepartmentUseCase } from '@/domain/usecases/member/RemoveMemberDepartmentUseCase'
 import type { CreateMemberRequest, UpdateMemberRequest, MemberQueryParams, BulkImportRow } from '@/domain/entities/member/Member'
@@ -21,6 +22,7 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
   private readonly updateMemberUseCase: UpdateMemberUseCase
   private readonly deleteMemberUseCase: DeleteMemberUseCase
   private readonly getMemberDepartmentsUseCase: GetMemberDepartmentsUseCase
+  private readonly getMemberEngagementUseCase: GetMemberEngagementUseCase
   private readonly assignMemberDepartmentUseCase: AssignMemberDepartmentUseCase
   private readonly removeMemberDepartmentUseCase: RemoveMemberDepartmentUseCase
   private readonly bulkImportMembersUseCase: BulkImportMembersUseCase
@@ -34,6 +36,7 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
     updateMemberUseCase,
     deleteMemberUseCase,
     getMemberDepartmentsUseCase,
+    getMemberEngagementUseCase,
     assignMemberDepartmentUseCase,
     removeMemberDepartmentUseCase,
     bulkImportMembersUseCase,
@@ -46,6 +49,7 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
     updateMemberUseCase: UpdateMemberUseCase
     deleteMemberUseCase: DeleteMemberUseCase
     getMemberDepartmentsUseCase: GetMemberDepartmentsUseCase
+    getMemberEngagementUseCase: GetMemberEngagementUseCase
     assignMemberDepartmentUseCase: AssignMemberDepartmentUseCase
     removeMemberDepartmentUseCase: RemoveMemberDepartmentUseCase
     bulkImportMembersUseCase: BulkImportMembersUseCase
@@ -58,6 +62,7 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
     this.updateMemberUseCase = updateMemberUseCase
     this.deleteMemberUseCase = deleteMemberUseCase
     this.getMemberDepartmentsUseCase = getMemberDepartmentsUseCase
+    this.getMemberEngagementUseCase = getMemberEngagementUseCase
     this.assignMemberDepartmentUseCase = assignMemberDepartmentUseCase
     this.removeMemberDepartmentUseCase = removeMemberDepartmentUseCase
     this.bulkImportMembersUseCase = bulkImportMembersUseCase
@@ -135,6 +140,14 @@ export class MembersPloc extends Ploc<StoreApi<MembersState>> {
     result.fold(
       (error) => this.store.setState({ drawerLoading: false, error: this.handleError(error) }),
       (memberDepartments) => this.store.setState({ drawerLoading: false, memberDepartments }),
+    )
+  }
+
+  async fetchEngagement(memberId: string): Promise<void> {
+    const result = await this.getMemberEngagementUseCase.execute(memberId)
+    result.fold(
+      () => this.store.setState({ currentMemberEngagement: null }),
+      (currentMemberEngagement) => this.store.setState({ currentMemberEngagement }),
     )
   }
 

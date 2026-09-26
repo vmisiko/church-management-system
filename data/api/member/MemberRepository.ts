@@ -14,6 +14,7 @@ import type {
   BulkImportRow,
   BulkImportResult,
   BulkPreviewResponse,
+  MemberEngagement,
 } from '@/domain/entities/member/Member'
 
 interface MembersListResponse {
@@ -125,6 +126,15 @@ export class MemberRepository extends BaseRepository implements IMemberRepositor
       const formData = new FormData()
       formData.append('file', file)
       const { data } = await this.axios.post<BulkPreviewResponse>('/api/members/bulk-preview', formData)
+      return Either.right(data)
+    } catch (error) {
+      return Either.left(mapToDataError(error))
+    }
+  }
+
+  async getEngagement(memberId: string): Promise<Either<DataError, MemberEngagement>> {
+    try {
+      const { data } = await this.axios.get<MemberEngagement>(`/api/members/${memberId}/engagement`)
       return Either.right(data)
     } catch (error) {
       return Either.left(mapToDataError(error))

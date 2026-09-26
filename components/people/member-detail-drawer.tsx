@@ -35,15 +35,18 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
+import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { Pencil, Trash2, Phone, Mail, Calendar, Users, Building2, Check, ChevronsUpDown, UserPlus } from "lucide-react"
+import { Pencil, Trash2, Phone, Mail, Calendar, Users, Building2, Check, ChevronsUpDown, UserPlus, Activity, Award, Plus, X } from "lucide-react"
 import useMembersState from "@/application/member/useMembersState"
 import useFellowshipsState from "@/application/fellowship/useFellowshipsState"
 import useDepartmentsState from "@/application/department/useDepartmentsState"
+import useMilestonesState from "@/application/milestone/useMilestonesState"
 import {
   useMembersPloc,
   useFellowshipsPloc,
   useDepartmentsPloc,
+  useMilestonesPloc,
 } from "@/core/di/DependencyLocator"
 import type { MemberStatus, MemberType, ActivityStatus } from "@/domain/entities/member/Member"
 
@@ -68,19 +71,26 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
   const membersPloc = useMembersPloc()
   const fellowshipsPloc = useFellowshipsPloc()
   const departmentsPloc = useDepartmentsPloc()
+  const milestonesPloc = useMilestonesPloc()
 
   const member = useMembersState((s) => s.currentMember)
   const memberDepartments = useMembersState((s) => s.memberDepartments)
   const allMembers = useMembersState((s) => Array.isArray(s.members) ? s.members : [])
+  const engagement = useMembersState((s) => s.currentMemberEngagement)
   const submitting = useMembersState((s) => s.submitting)
   const submitError = useMembersState((s) => s.error)
 
   const fellowships = useFellowshipsState((s) => Array.isArray(s.fellowships) ? s.fellowships : [])
   const departments = useDepartmentsState((s) => Array.isArray(s.departments) ? s.departments : [])
+  const milestoneTypes = useMilestonesState((s) => Array.isArray(s.types) ? s.types : [])
+  const memberMilestones = useMilestonesState((s) => Array.isArray(s.memberMilestones) ? s.memberMilestones : [])
+  const milestonesSubmitting = useMilestonesState((s) => s.submitting)
 
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deptPopoverOpen, setDeptPopoverOpen] = useState(false)
+  const [addingMilestone, setAddingMilestone] = useState(false)
+  const [milestoneForm, setMilestoneForm] = useState({ milestoneTypeId: "", achievedAt: "", notes: "" })
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -99,12 +109,17 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
     if (open && memberId) {
       membersPloc.fetchById(memberId)
       membersPloc.fetchDepartments(memberId)
+      membersPloc.fetchEngagement(memberId)
       fellowshipsPloc.fetchAll()
       departmentsPloc.fetchAll()
+      milestonesPloc.fetchTypes()
+      milestonesPloc.fetchByMember(memberId)
       setEditing(false)
       setConfirmDelete(false)
+      setAddingMilestone(false)
+      setMilestoneForm({ milestoneTypeId: "", achievedAt: "", notes: "" })
     }
-  }, [open, memberId, membersPloc, fellowshipsPloc, departmentsPloc])
+  }, [open, memberId, membersPloc, fellowshipsPloc, departmentsPloc, milestonesPloc])
 
   useEffect(() => {
     if (member && member.id === memberId) {
@@ -171,6 +186,24 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
     await membersPloc.delete(memberId)
     const error = useMembersState.getState().error
     if (!error) onOpenChange(false)
+  }
+
+  const handleAddMilestone = async () => {
+    if (!memberId || !milestoneForm.milestoneTypeId) return
+    const success = await milestonesPloc.record(memberId, {
+      milestoneTypeId: milestoneForm.milestoneTypeId,
+      achievedAt: milestoneForm.achievedAt || undefined,
+      notes: milestoneForm.notes || undefined,
+    })
+    if (success) {
+      setAddingMilestone(false)
+      setMilestoneForm({ milestoneTypeId: "", achievedAt: "", notes: "" })
+    }
+  }
+
+  const handleRemoveMilestone = async (milestoneId: string) => {
+    if (!memberId) return
+    await milestonesPloc.remove(memberId, milestoneId)
   }
 
   const fellowshipName = fellowships.find((f) => f.id === member?.fellowshipId)?.name ?? "None"
@@ -514,6 +547,121 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
                         </span>
                       </div>
                     </div>
+                  </section>
+
+                  <Separator />
+
+                  <section>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                      Engagement
+                    </h3>
+                    <div className="space-y-2.5">
+                      <div className="flex items-center gap-3 text-sm">
+                        <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span>
+                          {engagement?.lastSeenAt
+                            ? `Last seen ${new Date(engagement.lastSeenAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}`
+                            : <span className="text-muted-foreground">Not seen at a recorded attendance session</span>}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm">
+                        <Activity className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span>
+                          {engagement ? `Engagement score: ${engagement.engagementScore}/100` : <span className="text-muted-foreground">Not yet calculated</span>}
+                        </span>
+                      </div>
+                    </div>
+                  </section>
+
+                  <Separator />
+
+                  <section>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Milestones
+                      </h3>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 gap-1 px-2 text-xs"
+                        onClick={() => setAddingMilestone((v) => !v)}
+                      >
+                        {addingMilestone ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                        {addingMilestone ? "Cancel" : "Add"}
+                      </Button>
+                    </div>
+
+                    {addingMilestone && (
+                      <div className="mb-3 space-y-2 rounded-lg border p-3">
+                        <Select
+                          value={milestoneForm.milestoneTypeId}
+                          onValueChange={(v) => setMilestoneForm({ ...milestoneForm, milestoneTypeId: v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Milestone type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {milestoneTypes.map((t) => (
+                              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          type="date"
+                          value={milestoneForm.achievedAt}
+                          onChange={(e) => setMilestoneForm({ ...milestoneForm, achievedAt: e.target.value })}
+                        />
+                        <Textarea
+                          value={milestoneForm.notes}
+                          onChange={(e) => setMilestoneForm({ ...milestoneForm, notes: e.target.value })}
+                          placeholder="Notes (optional)"
+                          rows={2}
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="w-full"
+                          disabled={!milestoneForm.milestoneTypeId || milestonesSubmitting}
+                          onClick={() => void handleAddMilestone()}
+                        >
+                          {milestonesSubmitting ? "Saving…" : "Record milestone"}
+                        </Button>
+                      </div>
+                    )}
+
+                    {memberMilestones.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No milestones recorded yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {memberMilestones.map((m) => {
+                          const type = milestoneTypes.find((t) => t.id === m.milestoneTypeId)
+                          return (
+                            <div key={m.id} className="flex items-start justify-between gap-2 text-sm">
+                              <div className="flex items-start gap-3">
+                                <Award className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                                <div>
+                                  <p className="font-medium">{type?.name ?? "Milestone"}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {new Date(m.achievedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                                    {m.notes ? ` — ${m.notes}` : ""}
+                                  </p>
+                                </div>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 shrink-0"
+                                onClick={() => void handleRemoveMilestone(m.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                              </Button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
                   </section>
                 </div>
               )}
