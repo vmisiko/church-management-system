@@ -11,9 +11,17 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
-import { useFellowshipZonesPloc } from "@/core/di/DependencyLocator"
+import { useFellowshipZonesPloc, useMembersPloc } from "@/core/di/DependencyLocator"
 import useFellowshipZonesState from "@/application/fellowship-zone/useFellowshipZonesState"
+import useMembersState from "@/application/member/useMembersState"
 import type { FellowshipZone } from "@/domain/entities/fellowship-zone/FellowshipZone"
 
 interface AddZoneDialogProps {
@@ -24,24 +32,29 @@ interface AddZoneDialogProps {
 
 export function AddZoneDialog({ open, onOpenChange, zone }: AddZoneDialogProps) {
   const ploc = useFellowshipZonesPloc()
+  const membersPloc = useMembersPloc()
   const submitting = useFellowshipZonesState((s) => s.submitting)
   const error = useFellowshipZonesState((s) => s.error)
+  const allMembers = useMembersState((s) => Array.isArray(s.members) ? s.members : [])
   const isEditing = Boolean(zone)
   const [name, setName] = useState("")
+  const [overseerId, setOverseerId] = useState("")
 
   useEffect(() => {
     if (open) {
       setName(zone?.name ?? "")
+      setOverseerId(zone?.overseerId ?? "")
       ploc.clearError()
+      membersPloc.fetchAll()
     }
-  }, [open, zone, ploc])
+  }, [open, zone, ploc, membersPloc])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
     const result = isEditing && zone
-      ? await ploc.update(zone.id, { name: name.trim() })
-      : await ploc.create({ name: name.trim() })
+      ? await ploc.update(zone.id, { name: name.trim(), overseerId: overseerId || null })
+      : await ploc.create({ name: name.trim(), overseerId: overseerId || null })
     if (result.isRight()) onOpenChange(false)
   }
 
@@ -68,6 +81,22 @@ export function AddZoneDialog({ open, onOpenChange, zone }: AddZoneDialogProps) 
                   placeholder="e.g., Westlands Zone"
                   autoFocus
                 />
+              </Field>
+            </FieldGroup>
+            <FieldGroup className="mt-4">
+              <Field>
+                <FieldLabel>Overseer</FieldLabel>
+                <Select value={overseerId || "none"} onValueChange={(v) => setOverseerId(v === "none" ? "" : v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No overseer assigned</SelectItem>
+                    {allMembers.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>{m.firstName} {m.lastName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
             </FieldGroup>
             {error && (
