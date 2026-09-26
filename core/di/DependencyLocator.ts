@@ -24,6 +24,11 @@ import { DeleteUserUseCase } from "@/domain/usecases/user/DeleteUserUseCase"
 import { UsersPloc } from "@/application/user/UsersPloc"
 import useUsersState from "@/application/user/useUsersState"
 
+// ── Milestones ────────────────────────────────────────────────────────────────
+import { MilestoneRepository } from "@/data/api/milestone/MilestoneRepository"
+import { MilestonesPloc } from "@/application/milestone/MilestonesPloc"
+import useMilestonesState from "@/application/milestone/useMilestonesState"
+
 // ── Fellowship Zones ──────────────────────────────────────────────────────────
 import { FellowshipZoneRepository } from "@/data/api/fellowship-zone/FellowshipZoneRepository"
 import { GetFellowshipZonesUseCase } from "@/domain/usecases/fellowship-zone/GetFellowshipZonesUseCase"
@@ -63,6 +68,7 @@ import { CreateMemberUseCase } from "@/domain/usecases/member/CreateMemberUseCas
 import { UpdateMemberUseCase } from "@/domain/usecases/member/UpdateMemberUseCase"
 import { DeleteMemberUseCase } from "@/domain/usecases/member/DeleteMemberUseCase"
 import { GetMemberDepartmentsUseCase } from "@/domain/usecases/member/GetMemberDepartmentsUseCase"
+import { GetMemberEngagementUseCase } from "@/domain/usecases/member/GetMemberEngagementUseCase"
 import { AssignMemberDepartmentUseCase } from "@/domain/usecases/member/AssignMemberDepartmentUseCase"
 import { RemoveMemberDepartmentUseCase } from "@/domain/usecases/member/RemoveMemberDepartmentUseCase"
 import { BulkImportMembersUseCase } from "@/domain/usecases/member/BulkImportMembersUseCase"
@@ -320,12 +326,28 @@ export function useMembersPloc(): MembersPloc {
       updateMemberUseCase: new UpdateMemberUseCase(repo),
       deleteMemberUseCase: new DeleteMemberUseCase(repo),
       getMemberDepartmentsUseCase: new GetMemberDepartmentsUseCase(repo),
+      getMemberEngagementUseCase: new GetMemberEngagementUseCase(repo),
       assignMemberDepartmentUseCase: new AssignMemberDepartmentUseCase(repo),
       removeMemberDepartmentUseCase: new RemoveMemberDepartmentUseCase(repo),
       bulkImportMembersUseCase: new BulkImportMembersUseCase(repo),
       previewBulkImportUseCase: new PreviewBulkImportUseCase(repo),
     })
     return membersPlocSingleton
+  }, [router])
+}
+
+// ── Milestones ────────────────────────────────────────────────────────────────
+
+let milestonesPlocSingleton: MilestonesPloc | null = null
+
+export function useMilestonesPloc(): MilestonesPloc {
+  const router = useRouter()
+  return useMemo(() => {
+    if (milestonesPlocSingleton) return milestonesPlocSingleton
+    const axios = getSharedAxios(router)
+    const repo = new MilestoneRepository({ axios })
+    milestonesPlocSingleton = new MilestonesPloc({ store: useMilestonesState, repo })
+    return milestonesPlocSingleton
   }, [router])
 }
 

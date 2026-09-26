@@ -131,3 +131,8 @@ export interface BulkPreviewRow {
 export interface BulkPreviewResponse {
   rows: BulkPreviewRow[]
 }
+
+export interface MemberEngagement {
+  lastSeenAt: string | null
+  engagementScore: number
+}

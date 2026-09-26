@@ -1,11 +1,12 @@
 import { create } from 'zustand'
-import type { Member, MemberDepartment, BulkImportResult, BulkPreviewRow } from '@/domain/entities/member/Member'
+import type { Member, MemberDepartment, BulkImportResult, BulkPreviewRow, MemberEngagement } from '@/domain/entities/member/Member'
 
 export interface MembersState {
   members: Member[]
   total: number
   currentMember: Member | null
   memberDepartments: MemberDepartment[]
+  currentMemberEngagement: MemberEngagement | null
   loading: boolean
   drawerLoading: boolean
   submitting: boolean
@@ -22,6 +23,7 @@ const useMembersState = create<MembersState>(
     total: 0,
     currentMember: null,
     memberDepartments: [],
+    currentMemberEngagement: null,
     loading: false,
     drawerLoading: false,
     submitting: false,
