@@ -37,18 +37,30 @@ import {
 } from "@/components/ui/command"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
-import { Pencil, Trash2, Phone, Mail, Calendar, Users, Building2, Check, ChevronsUpDown, UserPlus, Activity, Award, Plus, X } from "lucide-react"
+import { Pencil, Trash2, Phone, Mail, Calendar, Users, Building2, Check, ChevronsUpDown, UserPlus, Activity, Award, Plus, X, HeartPulse } from "lucide-react"
 import useMembersState from "@/application/member/useMembersState"
 import useFellowshipsState from "@/application/fellowship/useFellowshipsState"
 import useDepartmentsState from "@/application/department/useDepartmentsState"
 import useMilestonesState from "@/application/milestone/useMilestonesState"
+import useCareState from "@/application/care/useCareState"
 import {
   useMembersPloc,
   useFellowshipsPloc,
   useDepartmentsPloc,
   useMilestonesPloc,
+  useCarePloc,
 } from "@/core/di/DependencyLocator"
 import type { MemberStatus, MemberType, ActivityStatus } from "@/domain/entities/member/Member"
+import type { CareRecordType } from "@/domain/entities/care/CareRecord"
+
+const careTypeLabels: Record<CareRecordType, string> = {
+  visit: "Visit",
+  call: "Phone call",
+  hospital: "Hospital visit",
+  bereavement: "Bereavement",
+  financial_need: "Financial need",
+  other: "Other",
+}
 
 const statusColors: Record<string, string> = {
   guest: "bg-muted text-muted-foreground",
@@ -72,6 +84,7 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
   const fellowshipsPloc = useFellowshipsPloc()
   const departmentsPloc = useDepartmentsPloc()
   const milestonesPloc = useMilestonesPloc()
+  const carePloc = useCarePloc()
 
   const member = useMembersState((s) => s.currentMember)
   const memberDepartments = useMembersState((s) => s.memberDepartments)
@@ -85,12 +98,16 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
   const milestoneTypes = useMilestonesState((s) => Array.isArray(s.types) ? s.types : [])
   const memberMilestones = useMilestonesState((s) => Array.isArray(s.memberMilestones) ? s.memberMilestones : [])
   const milestonesSubmitting = useMilestonesState((s) => s.submitting)
+  const careRecords = useCareState((s) => Array.isArray(s.records) ? s.records : [])
+  const careSubmitting = useCareState((s) => s.submitting)
 
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deptPopoverOpen, setDeptPopoverOpen] = useState(false)
   const [addingMilestone, setAddingMilestone] = useState(false)
   const [milestoneForm, setMilestoneForm] = useState({ milestoneTypeId: "", achievedAt: "", notes: "" })
+  const [addingCareRecord, setAddingCareRecord] = useState(false)
+  const [careForm, setCareForm] = useState<{ type: CareRecordType; notes: string }>({ type: "visit", notes: "" })
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -114,12 +131,15 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
       departmentsPloc.fetchAll()
       milestonesPloc.fetchTypes()
       milestonesPloc.fetchByMember(memberId)
+      carePloc.fetchByMember(memberId)
       setEditing(false)
       setConfirmDelete(false)
       setAddingMilestone(false)
       setMilestoneForm({ milestoneTypeId: "", achievedAt: "", notes: "" })
+      setAddingCareRecord(false)
+      setCareForm({ type: "visit", notes: "" })
     }
-  }, [open, memberId, membersPloc, fellowshipsPloc, departmentsPloc, milestonesPloc])
+  }, [open, memberId, membersPloc, fellowshipsPloc, departmentsPloc, milestonesPloc, carePloc])
 
   useEffect(() => {
     if (member && member.id === memberId) {
@@ -204,6 +224,23 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
   const handleRemoveMilestone = async (milestoneId: string) => {
     if (!memberId) return
     await milestonesPloc.remove(memberId, milestoneId)
+  }
+
+  const handleAddCareRecord = async () => {
+    if (!memberId) return
+    const success = await carePloc.create(memberId, {
+      type: careForm.type,
+      notes: careForm.notes || undefined,
+    })
+    if (success) {
+      setAddingCareRecord(false)
+      setCareForm({ type: "visit", notes: "" })
+    }
+  }
+
+  const handleResolveCareRecord = async (careRecordId: string) => {
+    if (!memberId) return
+    await carePloc.update(memberId, careRecordId, { status: "resolved" })
   }
 
   const fellowshipName = fellowships.find((f) => f.id === member?.fellowshipId)?.name ?? "None"
@@ -660,6 +697,96 @@ export function MemberDetailDrawer({ memberId, open, onOpenChange }: MemberDetai
                             </div>
                           )
                         })}
+                      </div>
+                    )}
+                  </section>
+
+                  <Separator />
+
+                  <section>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Care
+                      </h3>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 gap-1 px-2 text-xs"
+                        onClick={() => setAddingCareRecord((v) => !v)}
+                      >
+                        {addingCareRecord ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                        {addingCareRecord ? "Cancel" : "Log contact"}
+                      </Button>
+                    </div>
+
+                    {addingCareRecord && (
+                      <div className="mb-3 space-y-2 rounded-lg border p-3">
+                        <Select
+                          value={careForm.type}
+                          onValueChange={(v) => setCareForm({ ...careForm, type: v as CareRecordType })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(Object.keys(careTypeLabels) as CareRecordType[]).map((t) => (
+                              <SelectItem key={t} value={t}>{careTypeLabels[t]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Textarea
+                          value={careForm.notes}
+                          onChange={(e) => setCareForm({ ...careForm, notes: e.target.value })}
+                          placeholder="Notes (optional)"
+                          rows={2}
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="w-full"
+                          disabled={careSubmitting}
+                          onClick={() => void handleAddCareRecord()}
+                        >
+                          {careSubmitting ? "Saving…" : "Log care record"}
+                        </Button>
+                      </div>
+                    )}
+
+                    {careRecords.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No care records logged yet.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {careRecords.map((r) => (
+                          <div key={r.id} className="flex items-start justify-between gap-2 text-sm">
+                            <div className="flex items-start gap-3">
+                              <HeartPulse className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium">{careTypeLabels[r.type]}</p>
+                                  <Badge variant={r.status === "open" ? "secondary" : "outline"} className="text-xs">
+                                    {r.status}
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(r.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                                  {r.notes ? ` — ${r.notes}` : ""}
+                                </p>
+                              </div>
+                            </div>
+                            {r.status === "open" && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 shrink-0 px-2 text-xs"
+                                onClick={() => void handleResolveCareRecord(r.id)}
+                              >
+                                Resolve
+                              </Button>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </section>

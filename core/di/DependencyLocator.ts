@@ -29,6 +29,11 @@ import { MilestoneRepository } from "@/data/api/milestone/MilestoneRepository"
 import { MilestonesPloc } from "@/application/milestone/MilestonesPloc"
 import useMilestonesState from "@/application/milestone/useMilestonesState"
 
+// ── Care ──────────────────────────────────────────────────────────────────────
+import { CareRepository } from "@/data/api/care/CareRepository"
+import { CarePloc } from "@/application/care/CarePloc"
+import useCareState from "@/application/care/useCareState"
+
 // ── Fellowship Zones ──────────────────────────────────────────────────────────
 import { FellowshipZoneRepository } from "@/data/api/fellowship-zone/FellowshipZoneRepository"
 import { GetFellowshipZonesUseCase } from "@/domain/usecases/fellowship-zone/GetFellowshipZonesUseCase"
@@ -348,6 +353,21 @@ export function useMilestonesPloc(): MilestonesPloc {
     const repo = new MilestoneRepository({ axios })
     milestonesPlocSingleton = new MilestonesPloc({ store: useMilestonesState, repo })
     return milestonesPlocSingleton
+  }, [router])
+}
+
+// ── Care ──────────────────────────────────────────────────────────────────────
+
+let carePlocSingleton: CarePloc | null = null
+
+export function useCarePloc(): CarePloc {
+  const router = useRouter()
+  return useMemo(() => {
+    if (carePlocSingleton) return carePlocSingleton
+    const axios = getSharedAxios(router)
+    const repo = new CareRepository({ axios })
+    carePlocSingleton = new CarePloc({ store: useCareState, repo })
+    return carePlocSingleton
   }, [router])
 }
 
